@@ -1,14 +1,24 @@
 import base64
 import os
+from datetime import datetime, timedelta, timezone
 from utils.gmail_auth import get_gmail_service
+
+
+def _build_last_24h_query(base_query: str) -> str:
+    now_utc = datetime.now(timezone.utc)
+    start_utc = now_utc - timedelta(hours=24)
+    return f"{base_query} after:{int(start_utc.timestamp())} before:{int(now_utc.timestamp())}"
+
 
 def fetch_hdfc_emails(max_results=10, service=None):
     if service is None:
         service = get_gmail_service()
-    query = os.getenv(
-        "GMAIL_SEARCH_QUERY",
-        "from:alerts@hdfcbank.bank.in newer_than:1d"
-    )
+    configured_query = os.getenv("GMAIL_SEARCH_QUERY")
+    if configured_query:
+        query = configured_query
+    else:
+        base_query = os.getenv("GMAIL_SEARCH_BASE_QUERY", "from:alerts@hdfcbank.bank.in")
+        query = _build_last_24h_query(base_query)
 
     result = service.users().messages().list(
         userId="me",

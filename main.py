@@ -11,12 +11,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 from agent.agent import run
 from db.store import get_connection, initialize_db
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,8 +29,10 @@ from googleapiclient.discovery import build
 load_dotenv()
 
 scheduler = BackgroundScheduler()
-JOB_INTERVAL_HOURS = int(os.getenv("JOB_INTERVAL_HOURS", "24"))
 JOB_MAX_EMAILS = int(os.getenv("JOB_MAX_EMAILS", "50"))
+JOB_SCHEDULE_HOUR_IST = int(os.getenv("JOB_SCHEDULE_HOUR_IST", "22"))
+JOB_SCHEDULE_MINUTE_IST = int(os.getenv("JOB_SCHEDULE_MINUTE_IST", "0"))
+JOB_TIMEZONE = ZoneInfo("Asia/Kolkata")
 SESSION_COOKIE_NAME = "expense_session"
 GOOGLE_OAUTH_STATE_COOKIE = "expense_google_oauth_state"
 GOOGLE_OAUTH_CODE_VERIFIER_COOKIE = "expense_google_oauth_verifier"
@@ -218,7 +221,11 @@ def backfill_unowned_transactions_for_first_user(conn, user_id: int) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_db()
-    trigger = IntervalTrigger(hours=JOB_INTERVAL_HOURS)
+    trigger = CronTrigger(
+        hour=JOB_SCHEDULE_HOUR_IST,
+        minute=JOB_SCHEDULE_MINUTE_IST,
+        timezone=JOB_TIMEZONE,
+    )
     scheduler.add_job(
         run,
         trigger,
@@ -390,7 +397,11 @@ def job_status(current_user: dict[str, Any] = Depends(require_auth)):
         "scheduler_running": scheduler.running,
         "job_id": job.id if job else None,
         "next_run_time": job.next_run_time.isoformat() if job and job.next_run_time else None,
-        "interval_hours": JOB_INTERVAL_HOURS,
+        "schedule": {
+            "hour": JOB_SCHEDULE_HOUR_IST,
+            "minute": JOB_SCHEDULE_MINUTE_IST,
+            "timezone": str(JOB_TIMEZONE),
+        },
         "max_emails_per_run": JOB_MAX_EMAILS,
         "gmail_connected_users": connected_users,
     }
