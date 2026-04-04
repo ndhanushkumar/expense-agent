@@ -22,3 +22,6 @@ db/expenses.db
 # OS/editor
 .DS_Store
 .vscode/
+
+#MD
+RUNBOOK*

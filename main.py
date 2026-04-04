@@ -9,6 +9,8 @@ from fastapi import FastAPI, Query
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 load_dotenv()
 
@@ -74,6 +76,13 @@ def list_transactions(
         "offset": offset,
         "items": [dict(row) for row in rows],
     }
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/dashboard")
+def dashboard():
+    return FileResponse("static/dashboard.html")
+
 
 if __name__ == "__main__":
     import uvicorn

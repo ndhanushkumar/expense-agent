@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Agent</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f5f3ee;
+        --surface: #ffffff;
+        --surface2: #edeae3;
+        --border: #ddd9d0;
+        --text: #1a1816;
+        --muted: #9b9488;
+        --green-bg: #d4f0dd;
+        --green: #1a7a40;
+        --red-bg: #fde8e8;
+        --red: #c0392b;
+        --yellow: #e8b84b;
+        --mono: "IBM Plex Mono", monospace;
+        --sans: "Cabinet Grotesk", sans-serif;
+        --radius: 16px;
+        --radius-sm: 10px;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* header */
+      header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0 24px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      .logo {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .logo em {
+        color: var(--yellow);
+        font-style: normal;
+      }
+      .live-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--green-bg);
+        color: var(--green);
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 100px;
+      }
+      .live-dot {
+        width: 5px;
+        height: 5px;
+        background: var(--green);
+        border-radius: 50%;
+        animation: blink 2s ease-in-out infinite;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      /* layout */
+      .content {
+        padding: 24px;
+        max-width: 1080px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      /* stats */
+      .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .stat:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+      }
+      .stat-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .stat-num {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1;
+      }
+      .stat-num.red {
+        color: var(--red);
+      }
+      .stat-num.green {
+        color: var(--green);
+      }
+      .stat-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
+      /* two col */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+      .card-title {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+
+      /* bars */
+      .bar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .bar-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .bar-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .bar-name {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 60%;
+      }
+      .bar-val {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .bar-track {
+        height: 5px;
+        background: var(--surface2);
+        border-radius: 100px;
+        overflow: hidden;
+      }
+      .bar-fill {
+        height: 100%;
+        background: var(--text);
+        border-radius: 100px;
+        transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* breakdown */
+      .breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .brow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-radius: var(--radius-sm);
+      }
+      .brow.debit {
+        background: var(--red-bg);
+      }
+      .brow.credit {
+        background: var(--green-bg);
+      }
+      .brow-label {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .brow-label.debit {
+        color: var(--red);
+      }
+      .brow-label.credit {
+        color: var(--green);
+      }
+      .brow-count {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .brow-amount {
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .brow-amount.debit {
+        color: var(--red);
+      }
+      .brow-amount.credit {
+        color: var(--green);
+      }
+
+      /* table */
+      .table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .filter-tabs {
+        display: flex;
+        gap: 3px;
+        background: var(--surface2);
+        padding: 3px;
+        border-radius: var(--radius-sm);
+      }
+      .tab {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 6px 14px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 7px;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-weight: 500;
+      }
+      .tab.active {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      }
+      .search {
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 7px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface2);
+        color: var(--text);
+        outline: none;
+        width: 200px;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .search:focus {
+        border-color: var(--text);
+        background: var(--surface);
+      }
+      .search::placeholder {
+        color: var(--muted);
+      }
+
+      /* desktop table */
+      .tbl-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 12px 20px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+        font-weight: 500;
+      }
+      td {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+        font-size: 14px;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: var(--bg);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 500;
+      }
+      .badge.debited {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+      .badge.credited {
+        background: var(--green-bg);
+        color: var(--green);
+      }
+      .amount {
+        font-family: var(--mono);
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .amount.debited {
+        color: var(--red);
+      }
+      .amount.credited {
+        color: var(--green);
+      }
+      .td-mono {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .td-merchant {
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      /* mobile cards */
+      .mobile-list {
+        display: none;
+      }
+      .m-card {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .m-card:last-child {
+        border-bottom: none;
+      }
+      .m-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .m-icon.debited {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+      .m-icon.credited {
+        background: var(--green-bg);
+        color: var(--green);
+      }
+      .m-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .m-merchant {
+        font-weight: 700;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .m-meta {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .m-right {
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .m-amount {
+        font-family: var(--mono);
+        font-size: 15px;
+        font-weight: 500;
+      }
+      .m-amount.debited {
+        color: var(--red);
+      }
+      .m-amount.credited {
+        color: var(--green);
+      }
+      .m-date {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* pagination */
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .page-info {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .page-btns {
+        display: flex;
+        gap: 6px;
+      }
+      .page-btn {
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 6px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+        font-weight: 500;
+      }
+      .page-btn:hover:not(:disabled) {
+        background: var(--text);
+        color: var(--surface);
+        border-color: var(--text);
+      }
+      .page-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .empty {
+        padding: 48px 24px;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* responsive */
+      @media (max-width: 900px) {
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 680px) {
+        .content {
+          padding: 14px;
+        }
+        .stats-row {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+        .stat {
+          padding: 16px;
+        }
+        .stat-num {
+          font-size: 20px;
+        }
+        .search {
+          width: 100%;
+        }
+        .tbl-wrap table {
+          display: none;
+        }
+        .mobile-list {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">expense<em>_</em>agent</div>
+      <div class="live-pill">
+        <div class="live-dot"></div>
+        <span id="live-txt">connecting</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-label">Transactions</div>
+          <div class="stat-num" id="s-total">—</div>
+          <div class="stat-sub" id="s-date">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total Debited</div>
+          <div class="stat-num red" id="s-debit">—</div>
+          <div class="stat-sub">money out</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total Credited</div>
+          <div class="stat-num green" id="s-credit">—</div>
+          <div class="stat-sub">money in</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Net Balance</div>
+          <div class="stat-num" id="s-net">—</div>
+          <div class="stat-sub">credited − debited</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Top merchants by spend</div>
+          <div class="bar-list" id="bars">
+            <div class="empty">loading...</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Breakdown</div>
+          <div class="breakdown">
+            <div class="brow debit">
+              <div>
+                <div class="brow-label debit">Debited</div>
+                <div class="brow-count" id="b-dc">— transactions</div>
+              </div>
+              <div class="brow-amount debit" id="b-d">—</div>
+            </div>
+            <div class="brow credit">
+              <div>
+                <div class="brow-label credit">Credited</div>
+                <div class="brow-count" id="b-cc">— transactions</div>
+              </div>
+              <div class="brow-amount credit" id="b-c">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="filter-tabs">
+            <button class="tab active" onclick="setFilter('all', this)">
+              All
+            </button>
+            <button class="tab" onclick="setFilter('debited', this)">
+              Debited
+            </button>
+            <button class="tab" onclick="setFilter('credited', this)">
+              Credited
+            </button>
+          </div>
+          <input
+            class="search"
+            type="text"
+            placeholder="Search merchant..."
+            oninput="onSearch(this.value)"
+          />
+        </div>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Merchant</th>
+                <th>UPI Ref</th>
+                <th>Date</th>
+                <th>A/C</th>
+              </tr>
+            </thead>
+            <tbody id="tbl"></tbody>
+          </table>
+        </div>
+        <div class="mobile-list" id="mob"></div>
+
+        <div class="pagination">
+          <div class="page-info" id="pinfo">—</div>
+          <div class="page-btns">
+            <button
+              class="page-btn"
+              id="bprev"
+              onclick="changePage(-1)"
+              disabled
+            >
+              ← Prev
+            </button>
+            <button
+              class="page-btn"
+              id="bnext"
+              onclick="changePage(1)"
+              disabled
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = "",
+        PG = 20;
+      let all = [],
+        fil = [],
+        flt = "all",
+        q = "",
+        pg = 0;
+      const fmt = (n) =>
+        "₹" +
+        Number(n).toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+
+      async function init() {
+        try {
+          const r = await fetch(`${API}/transactions?limit=500`);
+          if (!r.ok) throw new Error(r.statusText);
+          all = (await r.json()).items || [];
+          document.getElementById("live-txt").textContent = "live";
+          render();
+        } catch (e) {
+          document.getElementById("live-txt").textContent = "offline";
+          document.getElementById("tbl").innerHTML =
+            `<tr><td colspan="6" class="empty">Cannot reach API — ${e.message}</td></tr>`;
+        }
+      }
+
+      function render() {
+        // stats
+        const deb = all.filter((t) => t.type === "debited"),
+          crd = all.filter((t) => t.type === "credited");
+        const dT = deb.reduce((s, t) => s + t.amount, 0),
+          cT = crd.reduce((s, t) => s + t.amount, 0),
+          net = cT - dT;
+        document.getElementById("s-total").textContent = all.length;
+        document.getElementById("s-debit").textContent = fmt(dT);
+        document.getElementById("s-credit").textContent = fmt(cT);
+        const ne = document.getElementById("s-net");
+        ne.textContent = fmt(Math.abs(net));
+        ne.className = "stat-num " + (net >= 0 ? "green" : "red");
+        document.getElementById("s-date").textContent =
+          new Date().toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+        document.getElementById("b-d").textContent = fmt(dT);
+        document.getElementById("b-dc").textContent =
+          deb.length + " transactions";
+        document.getElementById("b-c").textContent = fmt(cT);
+        document.getElementById("b-cc").textContent =
+          crd.length + " transactions";
+
+        // bars
+        const map = {};
+        all
+          .filter((t) => t.type === "debited" && t.merchant)
+          .forEach((t) => {
+            map[t.merchant] = (map[t.merchant] || 0) + t.amount;
+          });
+        const sorted = Object.entries(map)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6);
+        const mx = sorted[0]?.[1] || 1;
+        const bEl = document.getElementById("bars");
+        bEl.innerHTML = sorted.length
+          ? sorted
+              .map(
+                ([n, a]) => `
+    <div class="bar-item">
+      <div class="bar-meta"><div class="bar-name" title="${n}">${n}</div><div class="bar-val">${fmt(a)}</div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${((a / mx) * 100).toFixed(1)}%"></div></div>
+    </div>`,
+              )
+              .join("")
+          : '<div class="empty">No debit data yet</div>';
+
+        applyFilter();
+      }
+
+      function applyFilter() {
+        fil = all.filter((t) => {
+          const mt = flt === "all" || t.type === flt;
+          const ms =
+            !q ||
+            (t.merchant || "").toLowerCase().includes(q) ||
+            (t.upi_ref || "").toLowerCase().includes(q);
+          return mt && ms;
+        });
+        pg = 0;
+        renderTable();
+      }
+
+      function renderTable() {
+        const start = pg * PG,
+          slice = fil.slice(start, start + PG),
+          total = fil.length,
+          end = Math.min(start + PG, total);
+        if (!slice.length) {
+          document.getElementById("tbl").innerHTML =
+            '<tr><td colspan="6" class="empty">No transactions found</td></tr>';
+          document.getElementById("mob").innerHTML =
+            '<div class="empty">No transactions found</div>';
+        } else {
+          document.getElementById("tbl").innerHTML = slice
+            .map(
+              (t) => `<tr>
+      <td><span class="badge ${t.type}">${t.type}</span></td>
+      <td><span class="amount ${t.type}">${fmt(t.amount)}</span></td>
+      <td class="td-merchant">${t.merchant || "—"}</td>
+      <td class="td-mono">${t.upi_ref || "—"}</td>
+      <td class="td-mono">${t.date}</td>
+      <td class="td-mono">**${t.account || "—"}</td>
+    </tr>`,
+            )
+            .join("");
+          document.getElementById("mob").innerHTML = slice
+            .map(
+              (t) => `
+      <div class="m-card">
+        <div class="m-icon ${t.type}">${t.type === "debited" ? "↑" : "↓"}</div>
+        <div class="m-body">
+          <div class="m-merchant">${t.merchant || "Unknown"}</div>
+          <div class="m-meta">${t.upi_ref || ""} · **${t.account || "—"}</div>
+        </div>
+        <div class="m-right">
+          <div class="m-amount ${t.type}">${fmt(t.amount)}</div>
+          <div class="m-date">${t.date}</div>
+        </div>
+      </div>`,
+            )
+            .join("");
+        }
+        document.getElementById("pinfo").textContent = total
+          ? `${start + 1}–${end} of ${total}`
+          : "0 results";
+        document.getElementById("bprev").disabled = pg === 0;
+        document.getElementById("bnext").disabled = end >= total;
+      }
+
+      function setFilter(f, el) {
+        flt = f;
+        document
+          .querySelectorAll(".tab")
+          .forEach((b) => b.classList.remove("active"));
+        el.classList.add("active");
+        applyFilter();
+      }
+      function onSearch(v) {
+        q = v.toLowerCase().trim();
+        applyFilter();
+      }
+      function changePage(d) {
+        pg += d;
+        renderTable();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      init();
+    </script>
+  </body>
+</html>
