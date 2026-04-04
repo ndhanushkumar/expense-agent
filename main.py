@@ -60,7 +60,7 @@ def list_transactions(
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, email_id, amount, type, merchant, upi_ref, date, account
+            SELECT id, email_id, amount, type, merchant, upi_ref, date, account,category
             FROM transactions
             ORDER BY id DESC
             LIMIT ? OFFSET ?

@@ -25,6 +25,13 @@ llm = ChatGoogleGenerativeAI(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
+ollama_llm = ChatOllama(
+    model="gpt-oss:120b",
+    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+    api_key=os.getenv("OLLAMA_API_KEY")
+)
+
+
 prompt = ChatPromptTemplate.from_messages([
     ("system", """You are a bank transaction email parser for HDFC Bank India.
 
@@ -35,9 +42,10 @@ Rules:
 - type: "credited" if money came in, "debited" if money went out
 - merchant: the VPA name or person name (e.g. "Mr VETRIVEL A" or "8111021439@axl")
 - upi_ref: the UPI transaction reference number (numeric string)
-- date: as-is from the email (e.g. "03-04-26")
+- date: format as "DD-MM-YY" (e.g. "23-04-26")
 - account: last 4 digits of account number (e.g. "0540")
 - email_id: use exactly what is passed in
+- category: classify merchant into one of ["food", "entertainment", "utilities", "shopping", "other","persons"]
 
 Return this exact JSON, nothing else:
 {{
@@ -46,8 +54,9 @@ Return this exact JSON, nothing else:
   "type": "credited",
   "merchant": "Mr VETRIVEL A",
   "upi_ref": "118962893190",
-  "date": "03-04-26",
-  "account": "0540"
+  "date": "23-04-26",
+  "account": "0540",
+  "category": "food"
 }}
 
 No markdown. No explanation. No code block. Just the JSON."""),
@@ -60,16 +69,16 @@ def save_transaction(data: dict):
     with get_connection() as conn:
         conn.execute("""
             INSERT OR IGNORE INTO transactions
-            (email_id, amount, type, merchant, upi_ref, date, account)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (email_id, amount, type, merchant, upi_ref, date, account, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data["email_id"], data["amount"], data["type"],
             data.get("merchant"), data.get("upi_ref"),
-            data["date"], data.get("account")
+            data["date"], data.get("account"), data.get("category")
         ))
         conn.commit()
 
-def run(max_emails=1):
+def run(max_emails=500):
     initialize_db()
     emails = fetch_hdfc_emails(max_results=max_emails)
     print(f"{len(emails)} emails fetched")

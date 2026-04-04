@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional,Literal
 
 class Transaction(BaseModel):
     email_id: str
@@ -9,3 +9,4 @@ class Transaction(BaseModel):
     upi_ref: Optional[str] = None
     date: str
     account: Optional[str] = None
+    category: Literal["food", "entertainment", "utilities", "shopping", "other","persons"] = "other"

@@ -23,7 +23,8 @@ def initialize_db() -> None:
                 merchant TEXT,
                 upi_ref TEXT,
                 date TEXT NOT NULL,
-                account TEXT
+                account TEXT,
+                category TEXT DEFAULT 'other'
             )
             """
         )
