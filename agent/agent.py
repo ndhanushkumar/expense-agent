@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from models.transaction import Transaction
 from db.store import get_connection, initialize_db
 from utils.gmail_fetch import fetch_hdfc_emails
+from utils.gmail_auth import get_gmail_service_for_user
 
 load_dotenv()
 
@@ -65,33 +66,55 @@ No markdown. No explanation. No code block. Just the JSON."""),
 
 chain = prompt | llm | JsonOutputParser()
 
-def save_transaction(data: dict):
+def save_transaction(user_id: int, data: dict):
     with get_connection() as conn:
         conn.execute("""
             INSERT OR IGNORE INTO transactions
-            (email_id, amount, type, merchant, upi_ref, date, account, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, email_id, amount, type, merchant, upi_ref, date, account, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            data["email_id"], data["amount"], data["type"],
+            user_id, data["email_id"], data["amount"], data["type"],
             data.get("merchant"), data.get("upi_ref"),
             data["date"], data.get("account"), data.get("category")
         ))
         conn.commit()
 
-def run(max_emails=500):
-    initialize_db()
-    emails = fetch_hdfc_emails(max_results=max_emails)
-    print(f"{len(emails)} emails fetched")
+def _get_target_user_ids(target_user_id=None):
+    if target_user_id is not None:
+        return [target_user_id]
 
-    for email in emails:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT user_id FROM gmail_tokens ORDER BY user_id"
+        ).fetchall()
+    return [row["user_id"] for row in rows]
+
+
+def run(max_emails=500, user_id=None):
+    initialize_db()
+    target_user_ids = _get_target_user_ids(target_user_id=user_id)
+    if not target_user_ids:
+        print("No Gmail-connected users found; skipping ingestion")
+        return
+
+    for target_uid in target_user_ids:
         try:
-            result = chain.invoke({
-                "email_id": email["id"],
-                "body": email["body"]
-            })
-            result["email_id"] = email["id"]
-            Transaction(**result)   # validate
-            save_transaction(result)
-            print(f"Saved: {result['type']} Rs.{result['amount']} | {result['merchant']} | {result['date']}")
+            service = get_gmail_service_for_user(target_uid)
+            emails = fetch_hdfc_emails(max_results=max_emails, service=service)
+            print(f"[user {target_uid}] {len(emails)} emails fetched")
         except Exception as e:
-            print(f"Failed {email['id']}: {e}")
+            print(f"[user {target_uid}] Failed to fetch emails: {e}")
+            continue
+
+        for email in emails:
+            try:
+                result = chain.invoke({
+                    "email_id": email["id"],
+                    "body": email["body"]
+                })
+                result["email_id"] = email["id"]
+                Transaction(**result)   # validate
+                save_transaction(target_uid, result)
+                print(f"[user {target_uid}] Saved: {result['type']} Rs.{result['amount']} | {result['merchant']} | {result['date']}")
+            except Exception as e:
+                print(f"[user {target_uid}] Failed {email['id']}: {e}")

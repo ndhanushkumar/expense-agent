@@ -2,8 +2,9 @@ import base64
 import os
 from utils.gmail_auth import get_gmail_service
 
-def fetch_hdfc_emails(max_results=10):
-    service = get_gmail_service()
+def fetch_hdfc_emails(max_results=10, service=None):
+    if service is None:
+        service = get_gmail_service()
     query = os.getenv(
         "GMAIL_SEARCH_QUERY",
         "from:alerts@hdfcbank.bank.in newer_than:1d"

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Expense Agent</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cabinet+Grotesk:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f5f3ee;
+        --ink: #1c1a17;
+        --muted: #8e877b;
+        --card: #fff;
+        --line: #ddd9d0;
+        --accent: #e8b84b;
+        --accent-ink: #3a2a03;
+        --mono: "IBM Plex Mono", monospace;
+        --sans: "Cabinet Grotesk", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--sans);
+        color: var(--ink);
+        background:
+          radial-gradient(
+            1200px 500px at -20% 120%,
+            #efe7d9 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            800px 400px at 120% -10%,
+            #e8dfcd 0%,
+            transparent 60%
+          ),
+          var(--bg);
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+      .top {
+        padding: 22px 22px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .brand em {
+        color: var(--accent);
+        font-style: normal;
+      }
+      h1 {
+        margin: 10px 0 6px;
+        font-size: 32px;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+      .sub {
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .login-wrap {
+        padding: 18px 22px 22px;
+        display: grid;
+        gap: 14px;
+      }
+      .oauth-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        text-decoration: none;
+        border-radius: 12px;
+        padding: 11px 14px;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+      .oauth-btn:hover {
+        background: #f6f2e9;
+      }
+      .err {
+        min-height: 18px;
+        margin: 0;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: #c0392b;
+      }
+      .help {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      a {
+        color: var(--ink);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="top">
+        <div class="brand">expense<em>_</em>agent</div>
+        <h1>Welcome back</h1>
+        <p class="sub">Login to open your expense dashboard.</p>
+      </div>
+      <div class="login-wrap">
+        <a class="oauth-btn" href="/auth/google/start">Continue with Google</a>
+        <p class="help">
+          Gmail access is required to read bank emails for this app.
+        </p>
+        <p class="err" id="error"></p>
+      </div>
+    </div>
+
+    <script>
+      const err = document.getElementById("error");
+
+      function showOauthError() {
+        const params = new URLSearchParams(window.location.search);
+        const oauthError = params.get("error");
+        if (!oauthError) {
+          return;
+        }
+        err.textContent = `Google login failed: ${oauthError}`;
+      }
+
+      async function ensureLoggedOut() {
+        const meRes = await fetch("/auth/me");
+        if (meRes.ok) {
+          window.location.href = "/dashboard";
+        }
+      }
+
+      ensureLoggedOut();
+      showOauthError();
+    </script>
+  </body>
+</html>
