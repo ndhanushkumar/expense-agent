@@ -39,22 +39,28 @@
         min-height: 100vh;
         -webkit-font-smoothing: antialiased;
       }
+
+      /* header */
       header {
         background: var(--surface);
         border-bottom: 1px solid var(--border);
-        padding: 0 24px;
-        height: 56px;
+        padding: 0 20px;
+        height: 52px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 10px;
         position: sticky;
         top: 0;
         z-index: 100;
+        min-width: 0;
       }
       .logo {
         font-family: var(--mono);
         font-size: 13px;
         font-weight: 500;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .logo em {
         color: var(--yellow);
@@ -63,7 +69,10 @@
       .header-right {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        min-width: 0;
+        flex-shrink: 1;
+        overflow: hidden;
       }
       .user-chip {
         font-family: var(--mono);
@@ -73,10 +82,11 @@
         border: 1px solid var(--border);
         border-radius: 100px;
         background: var(--surface2);
-        max-width: 220px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        max-width: 200px;
+        min-width: 0;
       }
       .gmail-pill {
         font-family: var(--mono);
@@ -86,6 +96,8 @@
         border: 1px solid var(--border);
         background: var(--surface2);
         color: var(--muted);
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .gmail-pill.connected {
         background: var(--green-bg);
@@ -108,6 +120,8 @@
         border-radius: 100px;
         padding: 5px 10px;
         cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .logout-btn:hover {
         background: var(--text);
@@ -117,13 +131,15 @@
       .live-pill {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         background: var(--green-bg);
         color: var(--green);
         font-family: var(--mono);
         font-size: 11px;
         padding: 4px 10px;
         border-radius: 100px;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .live-dot {
         width: 5px;
@@ -131,6 +147,7 @@
         background: var(--green);
         border-radius: 50%;
         animation: blink 2s ease-in-out infinite;
+        flex-shrink: 0;
       }
       @keyframes blink {
         0%,
@@ -141,12 +158,16 @@
           opacity: 0.3;
         }
       }
+
+      /* layout */
       .content {
         padding: 24px;
         max-width: 1080px;
         margin: 0 auto;
         width: 100%;
       }
+
+      /* stats */
       .stats-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -191,6 +212,8 @@
         color: var(--muted);
         margin-top: 6px;
       }
+
+      /* cards */
       .card {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -211,6 +234,8 @@
         gap: 12px;
         margin-bottom: 20px;
       }
+
+      /* bars */
       .bar-list {
         display: flex;
         flex-direction: column;
@@ -251,6 +276,8 @@
         border-radius: 100px;
         transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
       }
+
+      /* breakdown */
       .breakdown {
         display: flex;
         flex-direction: column;
@@ -295,6 +322,8 @@
       .brow-amount.credit {
         color: var(--green);
       }
+
+      /* charts */
       .charts-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -335,21 +364,31 @@
         font-size: 11px;
         color: var(--muted);
       }
+
+      /* table */
       .table-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
         overflow: hidden;
       }
+
+      /* toolbar — two rows */
       .table-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .toolbar-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 14px 20px;
-        border-bottom: 1px solid var(--border);
         gap: 10px;
         flex-wrap: wrap;
       }
+
       .filter-tabs {
         display: flex;
         gap: 3px;
@@ -376,6 +415,7 @@
         color: var(--text);
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
       }
+
       .search {
         font-family: var(--mono);
         font-size: 12px;
@@ -385,7 +425,7 @@
         background: var(--surface2);
         color: var(--text);
         outline: none;
-        width: 200px;
+        width: 180px;
         transition:
           border-color 0.15s,
           background 0.15s;
@@ -397,6 +437,139 @@
       .search::placeholder {
         color: var(--muted);
       }
+
+      /* date controls row */
+      .date-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .date-input {
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface2);
+        color: var(--text);
+        outline: none;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+        cursor: pointer;
+      }
+      .date-input:focus {
+        border-color: var(--text);
+        background: var(--surface);
+      }
+      .date-sep {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .date-clear {
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .date-clear:hover {
+        border-color: var(--text);
+        color: var(--text);
+      }
+
+      /* group toggle */
+      .group-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+      .toggle-track {
+        width: 28px;
+        height: 16px;
+        background: var(--border);
+        border-radius: 100px;
+        position: relative;
+        transition: background 0.2s;
+        flex-shrink: 0;
+      }
+      .toggle-track.on {
+        background: var(--text);
+      }
+      .toggle-knob {
+        width: 12px;
+        height: 12px;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.2s;
+      }
+      .toggle-track.on .toggle-knob {
+        transform: translateX(12px);
+      }
+
+      /* date group header row */
+      .date-group-row td {
+        background: var(--bg);
+        padding: 8px 20px;
+        border-bottom: 1px solid var(--border);
+        border-top: 2px solid var(--border);
+      }
+      .date-group-row:first-child td {
+        border-top: none;
+      }
+      .dg-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text);
+        letter-spacing: 0.04em;
+      }
+      .dg-summary {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-left: 8px;
+      }
+      .dg-net {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .dg-net.pos {
+        color: var(--green);
+      }
+      .dg-net.neg {
+        color: var(--red);
+      }
+
+      /* mobile date group header */
+      .m-date-header {
+        padding: 8px 20px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        border-top: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .m-date-header:first-child {
+        border-top: none;
+      }
+
       .tbl-wrap {
         overflow-x: auto;
       }
@@ -425,7 +598,7 @@
       tr:last-child td {
         border-bottom: none;
       }
-      tr:hover td {
+      tbody tr:not(.date-group-row):hover td {
         background: var(--bg);
       }
       .badge {
@@ -477,6 +650,8 @@
         color: var(--muted);
         text-transform: lowercase;
       }
+
+      /* mobile cards */
       .mobile-list {
         display: none;
       }
@@ -547,6 +722,8 @@
         color: var(--muted);
         margin-top: 2px;
       }
+
+      /* pagination */
       .pagination {
         display: flex;
         align-items: center;
@@ -591,6 +768,8 @@
         font-size: 12px;
         color: var(--muted);
       }
+
+      /* responsive */
       @media (max-width: 900px) {
         .two-col {
           grid-template-columns: 1fr;
@@ -600,6 +779,15 @@
         }
       }
       @media (max-width: 680px) {
+        header {
+          padding: 0 14px;
+        }
+        .user-chip {
+          display: none;
+        }
+        .gmail-pill {
+          display: none;
+        }
         .content {
           padding: 14px;
         }
@@ -624,6 +812,22 @@
         }
         .charts-row {
           grid-template-columns: 1fr;
+        }
+        .date-controls {
+          width: 100%;
+        }
+        .date-input {
+          flex: 1;
+          min-width: 0;
+        }
+      }
+      @media (max-width: 400px) {
+        .logout-btn {
+          padding: 5px 8px;
+          font-size: 10px;
+        }
+        .live-pill {
+          padding: 4px 8px;
         }
       }
     </style>
@@ -714,24 +918,56 @@
 
       <div class="table-card">
         <div class="table-toolbar">
-          <div class="filter-tabs">
-            <button class="tab active" onclick="setFilter('all', this)">
-              All
-            </button>
-            <button class="tab" onclick="setFilter('debited', this)">
-              Debited
-            </button>
-            <button class="tab" onclick="setFilter('credited', this)">
-              Credited
-            </button>
+          <!-- row 1: type tabs + search -->
+          <div class="toolbar-row">
+            <div class="filter-tabs">
+              <button class="tab active" onclick="setFilter('all', this)">
+                All
+              </button>
+              <button class="tab" onclick="setFilter('debited', this)">
+                Debited
+              </button>
+              <button class="tab" onclick="setFilter('credited', this)">
+                Credited
+              </button>
+            </div>
+            <input
+              class="search"
+              type="text"
+              placeholder="Search merchant..."
+              oninput="onSearch(this.value)"
+            />
           </div>
-          <input
-            class="search"
-            type="text"
-            placeholder="Search merchant..."
-            oninput="onSearch(this.value)"
-          />
+
+          <!-- row 2: date range + group toggle -->
+          <div class="toolbar-row">
+            <div class="date-controls">
+              <input
+                class="date-input"
+                type="date"
+                id="date-from"
+                onchange="applyFilter()"
+                title="From date"
+              />
+              <span class="date-sep">→</span>
+              <input
+                class="date-input"
+                type="date"
+                id="date-to"
+                onchange="applyFilter()"
+                title="To date"
+              />
+              <button class="date-clear" onclick="clearDates()">✕ clear</button>
+            </div>
+            <div class="group-toggle" onclick="toggleGroup()">
+              <div class="toggle-track" id="grp-track">
+                <div class="toggle-knob"></div>
+              </div>
+              <span>Group by date</span>
+            </div>
+          </div>
         </div>
+
         <div class="tbl-wrap">
           <table>
             <thead>
@@ -749,6 +985,7 @@
           </table>
         </div>
         <div class="mobile-list" id="mob"></div>
+
         <div class="pagination">
           <div class="page-info" id="pinfo">—</div>
           <div class="page-btns">
@@ -780,9 +1017,11 @@
         fil = [],
         flt = "all",
         q = "",
-        pg = 0;
+        pg = 0,
+        groupByDate = false;
       let catChartInst = null,
         dayChartInst = null;
+
       const fmt = (n) =>
         "₹" +
         Number(n).toLocaleString("en-IN", {
@@ -802,16 +1041,30 @@
         "#ea580c",
       ];
 
+      // parse DD-MM-YY or DD-MM-YYYY → Date
+      function parseDate(d) {
+        if (!d) return null;
+        const p = d.split("-");
+        if (p.length !== 3) return null;
+        let [dd, mm, yy] = p;
+        if (yy.length === 2) yy = "20" + yy;
+        return new Date(`${yy}-${mm}-${dd}`);
+      }
+
+      // convert date input value (YYYY-MM-DD) to a comparable Date
+      function inputDate(v) {
+        return v ? new Date(v) : null;
+      }
+
       function setGmailStatus(gmail) {
         const badge = document.getElementById("gmail-status");
         const connected = Boolean(gmail && gmail.connected);
-        badge.className = "gmail-pill " + (connected ? "connected" : "disconnected");
-
+        badge.className =
+          "gmail-pill " + (connected ? "connected" : "disconnected");
         if (!connected) {
           badge.textContent = "gmail: not connected";
           return;
         }
-
         const when = gmail.updated_at
           ? new Date(gmail.updated_at).toLocaleDateString("en-IN", {
               day: "2-digit",
@@ -834,7 +1087,6 @@
               meData.user.email;
             setGmailStatus(meData.gmail);
           }
-
           const r = await fetch(`${API}/transactions?limit=500`);
           if (r.status === 401) {
             window.location.href = "/login";
@@ -974,14 +1226,6 @@
       }
 
       function renderDayChart() {
-        function parseDate(d) {
-          if (!d) return null;
-          const p = d.split("-");
-          if (p.length !== 3) return null;
-          let [dd, mm, yy] = p;
-          if (yy.length === 2) yy = "20" + yy;
-          return new Date(`${yy}-${mm}-${dd}`);
-        }
         const dayMap = {};
         all
           .filter((t) => t.type === "debited")
@@ -1044,64 +1288,169 @@
       }
 
       function applyFilter() {
+        const from = inputDate(document.getElementById("date-from").value);
+        const to = inputDate(document.getElementById("date-to").value);
+        // set to end of day
+        if (to) to.setHours(23, 59, 59, 999);
+
         fil = all.filter((t) => {
           const mt = flt === "all" || t.type === flt;
           const ms =
             !q ||
             (t.merchant || "").toLowerCase().includes(q) ||
             (t.upi_ref || "").toLowerCase().includes(q);
-          return mt && ms;
+          const ts = parseDate(t.date);
+          const mf = !from || (ts && ts >= from);
+          const me = !to || (ts && ts <= to);
+          return mt && ms && mf && me;
         });
         pg = 0;
         renderTable();
       }
 
+      function clearDates() {
+        document.getElementById("date-from").value = "";
+        document.getElementById("date-to").value = "";
+        applyFilter();
+      }
+
+      function toggleGroup() {
+        groupByDate = !groupByDate;
+        const track = document.getElementById("grp-track");
+        track.classList.toggle("on", groupByDate);
+        // grouped view: show all, no pagination
+        pg = 0;
+        renderTable();
+      }
+
+      /* ── table rendering ── */
       function renderTable() {
+        if (groupByDate) {
+          renderGrouped();
+        } else {
+          renderFlat();
+        }
+      }
+
+      function renderFlat() {
         const start = pg * PG,
           slice = fil.slice(start, start + PG),
           total = fil.length,
           end = Math.min(start + PG, total);
+        const tbl = document.getElementById("tbl"),
+          mob = document.getElementById("mob");
+        const pinfo = document.getElementById("pinfo");
+
         if (!slice.length) {
-          document.getElementById("tbl").innerHTML =
+          tbl.innerHTML =
             '<tr><td colspan="7" class="empty">No transactions found</td></tr>';
-          document.getElementById("mob").innerHTML =
-            '<div class="empty">No transactions found</div>';
+          mob.innerHTML = '<div class="empty">No transactions found</div>';
         } else {
-          document.getElementById("tbl").innerHTML = slice
-            .map(
-              (t) => `<tr>
-            <td><span class="badge ${t.type}">${t.type}</span></td>
-            <td><span class="amount ${t.type}">${fmt(t.amount)}</span></td>
-            <td class="td-merchant">${t.merchant || "—"}</td>
-            <td class="td-mono">${t.upi_ref || "—"}</td>
-            <td class="td-mono">${t.date}</td>
-            <td class="td-mono">**${t.account || "—"}</td>
-            <td><span class="cat-pill">${t.category || "—"}</span></td>
-          </tr>`,
-            )
-            .join("");
-          document.getElementById("mob").innerHTML = slice
-            .map(
-              (t) => `
-            <div class="m-card">
-              <div class="m-icon ${t.type}">${t.type === "debited" ? "↑" : "↓"}</div>
-              <div class="m-body">
-                <div class="m-merchant">${t.merchant || "Unknown"}</div>
-                <div class="m-meta">${t.upi_ref || ""} · **${t.account || "—"} · ${t.category || "—"}</div>
-              </div>
-              <div class="m-right">
-                <div class="m-amount ${t.type}">${fmt(t.amount)}</div>
-                <div class="m-date">${t.date}</div>
-              </div>
-            </div>`,
-            )
-            .join("");
+          tbl.innerHTML = slice.map((t) => txRow(t)).join("");
+          mob.innerHTML = slice.map((t) => txCard(t)).join("");
         }
-        document.getElementById("pinfo").textContent = total
+        pinfo.textContent = total
           ? `${start + 1}–${end} of ${total}`
           : "0 results";
         document.getElementById("bprev").disabled = pg === 0;
         document.getElementById("bnext").disabled = end >= total;
+        // show pagination
+        document.querySelector(".pagination").style.display = "";
+      }
+
+      function renderGrouped() {
+        // group fil by date, sorted descending (newest first)
+        const groups = {};
+        fil.forEach((t) => {
+          const k = t.date || "unknown";
+          if (!groups[k]) groups[k] = [];
+          groups[k].push(t);
+        });
+        const sorted = Object.entries(groups).sort((a, b) => {
+          const ta = parseDate(a[0]) || new Date(0),
+            tb = parseDate(b[0]) || new Date(0);
+          return tb - ta;
+        });
+
+        const tbl = document.getElementById("tbl"),
+          mob = document.getElementById("mob");
+
+        if (!sorted.length) {
+          tbl.innerHTML =
+            '<tr><td colspan="7" class="empty">No transactions found</td></tr>';
+          mob.innerHTML = '<div class="empty">No transactions found</div>';
+          document.getElementById("pinfo").textContent = "0 results";
+          document.querySelector(".pagination").style.display = "none";
+          return;
+        }
+
+        let tblHtml = "",
+          mobHtml = "";
+        let totalCount = 0;
+
+        sorted.forEach(([date, txns]) => {
+          const debitSum = txns
+            .filter((t) => t.type === "debited")
+            .reduce((s, t) => s + t.amount, 0);
+          const creditSum = txns
+            .filter((t) => t.type === "credited")
+            .reduce((s, t) => s + t.amount, 0);
+          const net = creditSum - debitSum;
+          const netCls = net >= 0 ? "pos" : "neg";
+          totalCount += txns.length;
+
+          // desktop group header
+          tblHtml += `<tr class="date-group-row">
+            <td colspan="7">
+              <span class="dg-label">${date}</span>
+              <span class="dg-summary">${txns.length} txn${txns.length > 1 ? "s" : ""}</span>
+              ${debitSum > 0 ? `<span class="dg-summary">↑ ${fmt(debitSum)}</span>` : ""}
+              ${creditSum > 0 ? `<span class="dg-summary">↓ ${fmt(creditSum)}</span>` : ""}
+              <span class="dg-net ${netCls}">net ${net >= 0 ? "+" : ""}${fmt(Math.abs(net))}</span>
+            </td>
+          </tr>`;
+          tblHtml += txns.map((t) => txRow(t)).join("");
+
+          // mobile group header
+          mobHtml += `<div class="m-date-header">
+            <span class="dg-label">${date}</span>
+            <span class="dg-net ${netCls}">${net >= 0 ? "+" : ""}${fmt(Math.abs(net))}</span>
+          </div>`;
+          mobHtml += txns.map((t) => txCard(t)).join("");
+        });
+
+        tbl.innerHTML = tblHtml;
+        mob.innerHTML = mobHtml;
+        document.getElementById("pinfo").textContent =
+          `${totalCount} transactions · ${sorted.length} days`;
+        // hide pagination in grouped mode
+        document.querySelector(".pagination").style.display = "none";
+      }
+
+      function txRow(t) {
+        return `<tr>
+          <td><span class="badge ${t.type}">${t.type}</span></td>
+          <td><span class="amount ${t.type}">${fmt(t.amount)}</span></td>
+          <td class="td-merchant">${t.merchant || "—"}</td>
+          <td class="td-mono">${t.upi_ref || "—"}</td>
+          <td class="td-mono">${t.date}</td>
+          <td class="td-mono">**${t.account || "—"}</td>
+          <td><span class="cat-pill">${t.category || "—"}</span></td>
+        </tr>`;
+      }
+
+      function txCard(t) {
+        return `<div class="m-card">
+          <div class="m-icon ${t.type}">${t.type === "debited" ? "↑" : "↓"}</div>
+          <div class="m-body">
+            <div class="m-merchant">${t.merchant || "Unknown"}</div>
+            <div class="m-meta">${t.upi_ref || ""} · **${t.account || "—"} · ${t.category || "—"}</div>
+          </div>
+          <div class="m-right">
+            <div class="m-amount ${t.type}">${fmt(t.amount)}</div>
+            <div class="m-date">${t.date}</div>
+          </div>
+        </div>`;
       }
 
       function setFilter(f, el) {
@@ -1121,7 +1470,6 @@
         renderTable();
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
-
       async function logoutUser() {
         await fetch("/auth/logout", { method: "POST" });
         window.location.href = "/login";
