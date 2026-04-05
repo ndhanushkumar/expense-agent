@@ -10,3 +10,4 @@ class Transaction(BaseModel):
     date: str
     account: Optional[str] = None
     category: Literal["food", "entertainment", "utilities", "shopping", "other","persons"] = "other"
+    payment_mode: Literal["upi", "credit_card", "debit_card"] = "debit_card"

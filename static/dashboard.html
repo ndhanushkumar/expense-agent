@@ -394,6 +394,7 @@
         background: var(--surface2);
         padding: 3px;
         border-radius: var(--radius-sm);
+        flex-wrap: wrap;
       }
       .tab {
         font-family: var(--mono);
@@ -1117,13 +1118,13 @@
 
       <div class="two-col">
         <div class="card">
-          <div class="card-title">Top merchants by spend</div>
+          <div class="card-title" id="title-merchants">Top merchants by spend</div>
           <div class="bar-list" id="bars">
             <div class="empty">loading...</div>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Breakdown</div>
+          <div class="card-title" id="title-breakdown">Breakdown</div>
           <div class="breakdown">
             <div class="brow debit">
               <div>
@@ -1145,14 +1146,14 @@
 
       <div class="charts-row">
         <div class="card">
-          <div class="card-title">Spend by category</div>
+          <div class="card-title" id="title-category">Spend by category</div>
           <div class="chart-wrap" style="height: 220px">
             <canvas id="cat-chart"></canvas>
           </div>
           <div class="donut-legend" id="cat-legend"></div>
         </div>
         <div class="card">
-          <div class="card-title">Day-wise spend</div>
+          <div class="card-title" id="title-daywise">Day-wise spend</div>
           <div class="chart-wrap" style="height: 260px">
             <canvas id="day-chart"></canvas>
           </div>
@@ -1163,13 +1164,13 @@
         <div class="table-toolbar">
           <div class="toolbar-row">
             <div class="filter-tabs">
-              <button class="tab active" onclick="setFilter('all', this)">
+              <button class="tab type-tab active" onclick="setFilter('all', this)">
                 All
               </button>
-              <button class="tab" onclick="setFilter('debited', this)">
+              <button class="tab type-tab" onclick="setFilter('debited', this)">
                 Debited
               </button>
-              <button class="tab" onclick="setFilter('credited', this)">
+              <button class="tab type-tab" onclick="setFilter('credited', this)">
                 Credited
               </button>
             </div>
@@ -1182,6 +1183,28 @@
               />
               <button class="add-btn" type="button" onclick="openAddModal()">
                 + Add transaction
+              </button>
+            </div>
+          </div>
+          <div class="toolbar-row">
+            <div class="filter-tabs">
+              <button
+                class="tab mode-tab active"
+                onclick="setPaymentFilter('all', this)"
+              >
+                All modes
+              </button>
+              <button
+                class="tab mode-tab"
+                onclick="setPaymentFilter('upi_debit', this)"
+              >
+                UPI + Debit
+              </button>
+              <button
+                class="tab mode-tab"
+                onclick="setPaymentFilter('credit_card', this)"
+              >
+                Credit card
               </button>
             </div>
           </div>
@@ -1220,6 +1243,7 @@
                 <th>Type</th>
                 <th>Amount</th>
                 <th>Merchant</th>
+                <th>Mode</th>
                 <th>Date</th>
                 <th>A/C</th>
                 <th>Category</th>
@@ -1279,6 +1303,14 @@
             <select class="field-select" id="edit-type">
               <option value="debited">debited</option>
               <option value="credited">credited</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">Payment mode</div>
+            <select class="field-select" id="edit-payment-mode">
+              <option value="upi">upi</option>
+              <option value="debit_card">debit card</option>
+              <option value="credit_card">credit card</option>
             </select>
           </div>
           <div>
@@ -1357,6 +1389,14 @@
             </select>
           </div>
           <div>
+            <div class="field-label">Payment mode</div>
+            <select class="field-select" id="add-payment-mode">
+              <option value="upi">upi</option>
+              <option value="debit_card" selected>debit card</option>
+              <option value="credit_card">credit card</option>
+            </select>
+          </div>
+          <div>
             <div class="field-label">Category</div>
             <select class="field-select" id="add-category">
               <option value="food">food</option>
@@ -1408,6 +1448,7 @@
       let all = [],
         fil = [],
         flt = "all",
+        payFlt = "all",
         q = "",
         pg = 0,
         groupByDate = false;
@@ -1453,6 +1494,46 @@
       function inputDate(v) {
         return v ? new Date(v) : null;
       }
+      function normalizedMode(t) {
+        const mode = (t.payment_mode || "").toLowerCase();
+        if (mode === "upi" || mode === "credit_card" || mode === "debit_card") {
+          return mode;
+        }
+        return t.upi_ref ? "upi" : "debit_card";
+      }
+      function modeLabel(mode) {
+        if (mode === "credit_card") return "Credit card";
+        if (mode === "debit_card") return "Debit card";
+        return "UPI";
+      }
+      function activeModeLabel() {
+        if (payFlt === "credit_card") return "Credit card";
+        if (payFlt === "upi_debit") return "UPI + Debit";
+        return "All modes";
+      }
+      function getModeScopedTransactions() {
+        if (payFlt === "credit_card") {
+          return all.filter((t) => normalizedMode(t) === "credit_card");
+        }
+        if (payFlt === "upi_debit") {
+          return all.filter((t) => {
+            const mode = normalizedMode(t);
+            return mode === "upi" || mode === "debit_card";
+          });
+        }
+        return all;
+      }
+      function updateModeTitles() {
+        const suffix = ` (${activeModeLabel()})`;
+        document.getElementById("title-merchants").textContent =
+          "Top merchants by spend" + suffix;
+        document.getElementById("title-breakdown").textContent =
+          "Breakdown" + suffix;
+        document.getElementById("title-category").textContent =
+          "Spend by category" + suffix;
+        document.getElementById("title-daywise").textContent =
+          "Day-wise spend" + suffix;
+      }
 
       function setGmailStatus(gmail) {
         const badge = document.getElementById("gmail-status");
@@ -1497,15 +1578,17 @@
         } catch (e) {
           document.getElementById("live-txt").textContent = "offline";
           document.getElementById("tbl").innerHTML =
-            `<tr><td colspan="7" class="empty">Cannot reach API — ${e.message}</td></tr>`;
+            `<tr><td colspan="8" class="empty">Cannot reach API — ${e.message}</td></tr>`;
         }
       }
 
       function render() {
-        renderStats();
-        renderMerchantBars();
-        renderCategoryChart();
-        renderDayChart();
+        const scoped = getModeScopedTransactions();
+        renderStats(scoped);
+        renderMerchantBars(scoped);
+        renderCategoryChart(scoped);
+        renderDayChart(scoped);
+        updateModeTitles();
         applyFilter();
         document.getElementById("s-date").textContent =
           new Date().toLocaleDateString("en-IN", {
@@ -1513,16 +1596,16 @@
             day: "numeric",
             month: "long",
             year: "numeric",
-          });
+          }) + ` · ${activeModeLabel()}`;
       }
 
-      function renderStats() {
-        const deb = all.filter((t) => t.type === "debited"),
-          crd = all.filter((t) => t.type === "credited");
+      function renderStats(items) {
+        const deb = items.filter((t) => t.type === "debited"),
+          crd = items.filter((t) => t.type === "credited");
         const dT = deb.reduce((s, t) => s + t.amount, 0),
           cT = crd.reduce((s, t) => s + t.amount, 0),
           net = cT - dT;
-        document.getElementById("s-total").textContent = all.length;
+        document.getElementById("s-total").textContent = items.length;
         document.getElementById("s-debit").textContent = fmt(dT);
         document.getElementById("s-credit").textContent = fmt(cT);
         const ne = document.getElementById("s-net");
@@ -1536,9 +1619,9 @@
           crd.length + " transactions";
       }
 
-      function renderMerchantBars() {
+      function renderMerchantBars(items) {
         const map = {};
-        all
+        items
           .filter((t) => t.type === "debited" && t.merchant)
           .forEach((t) => {
             map[t.merchant] = (map[t.merchant] || 0) + t.amount;
@@ -1561,9 +1644,9 @@
           : '<div class="empty">No debit data yet</div>';
       }
 
-      function renderCategoryChart() {
+      function renderCategoryChart(items) {
         const map = {};
-        all
+        items
           .filter((t) => t.type === "debited")
           .forEach((t) => {
             const cat =
@@ -1623,9 +1706,9 @@
           : "";
       }
 
-      function renderDayChart() {
+      function renderDayChart(items) {
         const dayMap = {};
-        all
+        items
           .filter((t) => t.type === "debited")
           .forEach((t) => {
             const k = t.date || "unknown";
@@ -1691,6 +1774,11 @@
         if (to) to.setHours(23, 59, 59, 999);
         fil = all.filter((t) => {
           const mt = flt === "all" || t.type === flt;
+          const mode = normalizedMode(t);
+          const mm =
+            payFlt === "all" ||
+            (payFlt === "credit_card" && mode === "credit_card") ||
+            (payFlt === "upi_debit" && (mode === "upi" || mode === "debit_card"));
           const ms =
             !q ||
             (t.merchant || "").toLowerCase().includes(q) ||
@@ -1698,7 +1786,7 @@
           const ts = parseDate(t.date);
           const mf = !from || (ts && ts >= from);
           const me = !to || (ts && ts <= to);
-          return mt && ms && mf && me;
+          return mt && mm && ms && mf && me;
         });
         pg = 0;
         renderTable();
@@ -1730,7 +1818,7 @@
           end = Math.min(start + PG, total);
         if (!slice.length) {
           document.getElementById("tbl").innerHTML =
-            '<tr><td colspan="7" class="empty">No transactions found</td></tr>';
+            '<tr><td colspan="8" class="empty">No transactions found</td></tr>';
           document.getElementById("mob").innerHTML =
             '<div class="empty">No transactions found</div>';
         } else {
@@ -1763,7 +1851,7 @@
         });
         if (!sorted.length) {
           document.getElementById("tbl").innerHTML =
-            '<tr><td colspan="7" class="empty">No transactions found</td></tr>';
+            '<tr><td colspan="8" class="empty">No transactions found</td></tr>';
           document.getElementById("mob").innerHTML =
             '<div class="empty">No transactions found</div>';
           document.getElementById("pinfo").textContent = "0 results";
@@ -1783,7 +1871,7 @@
           const net = creditSum - debitSum;
           const netCls = net >= 0 ? "pos" : "neg";
           totalCount += txns.length;
-          tblHtml += `<tr class="date-group-row"><td colspan="7">
+          tblHtml += `<tr class="date-group-row"><td colspan="8">
             <span class="dg-label">${date}</span>
             <span class="dg-summary">${txns.length} txn${txns.length > 1 ? "s" : ""}</span>
             ${debitSum > 0 ? `<span class="dg-summary">↑ ${fmt(debitSum)}</span>` : ""}
@@ -1802,10 +1890,12 @@
       }
 
       function txRow(t) {
+        const paymentMode = normalizedMode(t);
         return `<tr>
           <td><span class="badge ${t.type}">${t.type}</span></td>
           <td><span class="amount ${t.type}">${fmt(t.amount)}</span></td>
           <td class="td-merchant">${t.merchant || "—"}</td>
+          <td class="td-mono">${modeLabel(paymentMode)}</td>
           <td class="td-mono">${t.date}</td>
           <td class="td-mono">**${t.account || "—"}</td>
           <td><span class="cat-pill">${t.category || "—"}</span></td>
@@ -1819,11 +1909,12 @@
       }
 
       function txCard(t) {
+        const paymentMode = normalizedMode(t);
         return `<div class="m-card">
           <div class="m-icon ${t.type}">${t.type === "debited" ? "↑" : "↓"}</div>
           <div class="m-body">
             <div class="m-merchant">${t.merchant || "Unknown"}</div>
-            <div class="m-meta">**${t.account || "—"} · ${t.category || "—"}</div>
+            <div class="m-meta">${modeLabel(paymentMode)} · **${t.account || "—"} · ${t.category || "—"}</div>
           </div>
           <div class="m-right">
             <div class="m-amount ${t.type}">${fmt(t.amount)}</div>
@@ -1844,6 +1935,7 @@
         document.getElementById("edit-amount").value = t.amount;
         document.getElementById("edit-merchant").value = t.merchant || "";
         document.getElementById("edit-type").value = t.type;
+        document.getElementById("edit-payment-mode").value = normalizedMode(t);
         document.getElementById("edit-category").value = t.category || "";
         document.getElementById("edit-date").value = t.date || "";
         document.getElementById("edit-modal").classList.add("open");
@@ -1854,6 +1946,7 @@
           amount: parseFloat(document.getElementById("edit-amount").value),
           merchant: document.getElementById("edit-merchant").value,
           type: document.getElementById("edit-type").value,
+          payment_mode: document.getElementById("edit-payment-mode").value,
           category: document.getElementById("edit-category").value,
           date: document.getElementById("edit-date").value,
         };
@@ -1900,6 +1993,7 @@
         document.getElementById("add-amount").value = "";
         document.getElementById("add-merchant").value = "";
         document.getElementById("add-type").value = "debited";
+        document.getElementById("add-payment-mode").value = "debit_card";
         document.getElementById("add-category").value = "other";
         document.getElementById("add-date").value = new Date()
           .toISOString()
@@ -1926,6 +2020,7 @@
         const payload = {
           amount,
           type: document.getElementById("add-type").value,
+          payment_mode: document.getElementById("add-payment-mode").value,
           category: document.getElementById("add-category").value,
           date,
           merchant: merchant || null,
@@ -1964,10 +2059,18 @@
       function setFilter(f, el) {
         flt = f;
         document
-          .querySelectorAll(".tab")
+          .querySelectorAll(".type-tab")
           .forEach((b) => b.classList.remove("active"));
         el.classList.add("active");
         applyFilter();
+      }
+      function setPaymentFilter(f, el) {
+        payFlt = f;
+        document
+          .querySelectorAll(".mode-tab")
+          .forEach((b) => b.classList.remove("active"));
+        el.classList.add("active");
+        render();
       }
       function onSearch(v) {
         q = v.toLowerCase().trim();

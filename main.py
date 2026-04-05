@@ -415,7 +415,7 @@ def list_transactions(
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, email_id, amount, type, merchant, upi_ref, date, account, category
+            SELECT id, email_id, amount, type, merchant, upi_ref, date, account, category, payment_mode
             FROM transactions
             WHERE user_id = ?
             ORDER BY id DESC
@@ -443,6 +443,7 @@ class TransactionUpdate(BaseModel):
     type: Optional[str] = None
     category: Optional[str] = None
     date: Optional[str] = None
+    payment_mode: Optional[str] = None
 
 
 class TransactionCreate(BaseModel):
@@ -454,6 +455,18 @@ class TransactionCreate(BaseModel):
     account: Optional[str] = None
     category: Optional[str] = "other"
     email_id: Optional[str] = None
+    payment_mode: Optional[str] = None
+
+
+def normalize_payment_mode(value: str | None, upi_ref: str | None = None) -> str:
+    raw = (value or "").strip().lower()
+    if raw in {"upi", "credit_card", "debit_card"}:
+        return raw
+    if not raw and upi_ref:
+        return "upi"
+    if not raw:
+        return "debit_card"
+    raise HTTPException(status_code=400, detail="payment_mode must be upi, credit_card, or debit_card")
 
 
 @app.post("/transactions")
@@ -475,6 +488,7 @@ def create_transaction(
     upi_ref = (body.upi_ref or "").strip() or None
     account = (body.account or "").strip() or None
     category = (body.category or "").strip().lower() or "other"
+    payment_mode = normalize_payment_mode(body.payment_mode, upi_ref)
     date = (body.date or "").strip()
     if not date:
         raise HTTPException(status_code=400, detail="date is required")
@@ -483,8 +497,8 @@ def create_transaction(
         try:
             cursor = conn.execute(
                 """
-                INSERT INTO transactions (user_id, email_id, amount, type, merchant, upi_ref, date, account, category)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO transactions (user_id, email_id, amount, type, merchant, upi_ref, date, account, category, payment_mode)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     current_user["id"],
@@ -496,6 +510,7 @@ def create_transaction(
                     date,
                     account,
                     category,
+                    payment_mode,
                 ),
             )
         except sqlite3.IntegrityError as exc:
@@ -504,7 +519,7 @@ def create_transaction(
         tx_id = cursor.lastrowid
         row = conn.execute(
             """
-            SELECT id, email_id, amount, type, merchant, upi_ref, date, account, category
+            SELECT id, email_id, amount, type, merchant, upi_ref, date, account, category, payment_mode
             FROM transactions
             WHERE id = ? AND user_id = ?
             """,
@@ -524,6 +539,8 @@ def update_transaction(
     fields = {k: v for k, v in body.model_dump().items() if v is not None}
     if not fields:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if "payment_mode" in fields:
+        fields["payment_mode"] = normalize_payment_mode(fields["payment_mode"])
 
     with get_connection() as conn:
         # verify ownership

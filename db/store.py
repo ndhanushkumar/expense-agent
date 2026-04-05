@@ -67,6 +67,7 @@ def initialize_db() -> None:
                 date TEXT NOT NULL,
                 account TEXT,
                 category TEXT DEFAULT 'other',
+                payment_mode TEXT DEFAULT 'debit_card',
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )
             """
@@ -76,6 +77,18 @@ def initialize_db() -> None:
         col_names = {row[1] for row in cols}
         if "user_id" not in col_names:
             conn.execute("ALTER TABLE transactions ADD COLUMN user_id INTEGER")
+        if "payment_mode" not in col_names:
+            conn.execute("ALTER TABLE transactions ADD COLUMN payment_mode TEXT DEFAULT 'debit_card'")
+        conn.execute(
+            """
+            UPDATE transactions
+            SET payment_mode = CASE
+                WHEN upi_ref IS NOT NULL AND TRIM(upi_ref) != '' THEN 'upi'
+                ELSE 'debit_card'
+            END
+            WHERE payment_mode IS NULL OR TRIM(payment_mode) = ''
+            """
+        )
 
         user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if user_count == 1:

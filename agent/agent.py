@@ -43,6 +43,10 @@ Rules:
 - type: "credited" if money came in, "debited" if money went out
 - merchant: the VPA name or person name (e.g. "Mr VETRIVEL A" or "8111021439@axl")
 - upi_ref: the UPI transaction reference number (numeric string)
+- payment_mode: classify payment source as one of ["upi", "credit_card", "debit_card"] from email content
+  - use "upi" when UPI/VPA/ref wording is present
+  - use "credit_card" when credit card/card statement wording is present
+  - otherwise use "debit_card"
 - date: format as "DD-MM-YY" (e.g. "23-04-26")
 - account: last 4 digits of account number (e.g. "0540")
 - email_id: use exactly what is passed in
@@ -55,6 +59,7 @@ Return this exact JSON, nothing else:
   "type": "credited",
   "merchant": "Mr VETRIVEL A",
   "upi_ref": "118962893190",
+  "payment_mode": "upi",
   "date": "23-04-26",
   "account": "0540",
   "category": "food"
@@ -67,15 +72,24 @@ No markdown. No explanation. No code block. Just the JSON."""),
 chain = prompt | llm | JsonOutputParser()
 
 def save_transaction(user_id: int, data: dict):
+    payment_mode = str(data.get("payment_mode") or "").strip().lower().replace(" ", "_")
+    if payment_mode in {"creditcard", "credit-card"}:
+        payment_mode = "credit_card"
+    elif payment_mode in {"debitcard", "debit-card"}:
+        payment_mode = "debit_card"
+
+    if payment_mode not in {"upi", "credit_card", "debit_card"}:
+        payment_mode = "upi" if data.get("upi_ref") else "debit_card"
+
     with get_connection() as conn:
         conn.execute("""
             INSERT OR IGNORE INTO transactions
-            (user_id, email_id, amount, type, merchant, upi_ref, date, account, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, email_id, amount, type, merchant, upi_ref, date, account, category, payment_mode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_id, data["email_id"], data["amount"], data["type"],
             data.get("merchant"), data.get("upi_ref"),
-            data["date"], data.get("account"), data.get("category")
+            data["date"], data.get("account"), data.get("category"), payment_mode
         ))
         conn.commit()
 
