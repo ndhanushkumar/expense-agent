@@ -1,15 +1,15 @@
 
-
 import hashlib
 import hmac
 import json
 import logging
 import os
 import secrets
+import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -25,6 +25,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.oauth2 import id_token as google_id_token
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -48,6 +49,8 @@ GOOGLE_SCOPES = [
 ]
 logger = logging.getLogger("uvicorn.error")
 
+
+# ── helpers ────────────────────────────────────────────────────────────────
 
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -151,10 +154,8 @@ def build_google_flow(
     code_verifier: str | None = None,
 ) -> Flow:
     redirect_uri = get_google_redirect_uri(request)
-    # OAuthlib requires HTTPS by default; localhost is safe for local dev.
     if redirect_uri.startswith("http://localhost") or redirect_uri.startswith("http://127.0.0.1"):
         os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
-    # Google can return normalized/reordered scopes; do not fail token exchange for that.
     os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
 
     flow = Flow.from_client_secrets_file(
@@ -218,6 +219,9 @@ def backfill_unowned_transactions_for_first_user(conn, user_id: int) -> None:
             (user_id,),
         )
 
+
+# ── lifespan ───────────────────────────────────────────────────────────────
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_db()
@@ -238,6 +242,9 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan)
+
+
+# ── pages ──────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def read_root(request: Request):
@@ -260,6 +267,8 @@ def register_page(request: Request):
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
+# ── google oauth ───────────────────────────────────────────────────────────
+
 @app.get("/auth/google/start")
 def google_auth_start(request: Request):
     flow = build_google_flow(request)
@@ -272,24 +281,8 @@ def google_auth_start(request: Request):
         code_challenge_method="S256",
     )
     response = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
-    response.set_cookie(
-        key=GOOGLE_OAUTH_STATE_COOKIE,
-        value=state,
-        httponly=True,
-        secure=SESSION_COOKIE_SECURE,
-        samesite="lax",
-        max_age=10 * 60,
-        path="/",
-    )
-    response.set_cookie(
-        key=GOOGLE_OAUTH_CODE_VERIFIER_COOKIE,
-        value=code_verifier,
-        httponly=True,
-        secure=SESSION_COOKIE_SECURE,
-        samesite="lax",
-        max_age=10 * 60,
-        path="/",
-    )
+    response.set_cookie(key=GOOGLE_OAUTH_STATE_COOKIE, value=state, httponly=True, secure=SESSION_COOKIE_SECURE, samesite="lax", max_age=10 * 60, path="/")
+    response.set_cookie(key=GOOGLE_OAUTH_CODE_VERIFIER_COOKIE, value=code_verifier, httponly=True, secure=SESSION_COOKIE_SECURE, samesite="lax", max_age=10 * 60, path="/")
     return response
 
 
@@ -359,6 +352,8 @@ def google_auth_callback(request: Request):
     return response
 
 
+# ── auth endpoints ─────────────────────────────────────────────────────────
+
 @app.post("/auth/logout")
 def logout(request: Request):
     raw_token = request.cookies.get(SESSION_COOKIE_NAME)
@@ -388,6 +383,8 @@ def auth_me(current_user: dict[str, Any] = Depends(require_auth)):
     return {"user": current_user, "gmail": gmail}
 
 
+# ── job status ─────────────────────────────────────────────────────────────
+
 @app.get("/job/status")
 def job_status(current_user: dict[str, Any] = Depends(require_auth)):
     job = scheduler.get_job("daily_expense_job")
@@ -407,6 +404,8 @@ def job_status(current_user: dict[str, Any] = Depends(require_auth)):
     }
 
 
+# ── transactions ───────────────────────────────────────────────────────────
+
 @app.get("/transactions")
 def list_transactions(
     current_user: dict[str, Any] = Depends(require_auth),
@@ -416,7 +415,7 @@ def list_transactions(
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, email_id, amount, type, merchant, upi_ref, date, account,category
+            SELECT id, email_id, amount, type, merchant, upi_ref, date, account, category
             FROM transactions
             WHERE user_id = ?
             ORDER BY id DESC
@@ -437,7 +436,140 @@ def list_transactions(
         "items": [dict(row) for row in rows],
     }
 
+
+class TransactionUpdate(BaseModel):
+    amount: Optional[float] = None
+    merchant: Optional[str] = None
+    type: Optional[str] = None
+    category: Optional[str] = None
+    date: Optional[str] = None
+
+
+class TransactionCreate(BaseModel):
+    amount: float
+    type: str
+    date: str
+    merchant: Optional[str] = None
+    upi_ref: Optional[str] = None
+    account: Optional[str] = None
+    category: Optional[str] = "other"
+    email_id: Optional[str] = None
+
+
+@app.post("/transactions")
+def create_transaction(
+    body: TransactionCreate,
+    current_user: dict[str, Any] = Depends(require_auth),
+):
+    tx_type = (body.type or "").strip().lower()
+    if tx_type not in {"debited", "credited"}:
+        raise HTTPException(status_code=400, detail="type must be debited or credited")
+    if body.amount <= 0:
+        raise HTTPException(status_code=400, detail="amount must be greater than 0")
+
+    email_id = (body.email_id or "").strip()
+    if not email_id:
+        email_id = f"manual-{current_user['id']}-{secrets.token_hex(8)}"
+
+    merchant = (body.merchant or "").strip() or None
+    upi_ref = (body.upi_ref or "").strip() or None
+    account = (body.account or "").strip() or None
+    category = (body.category or "").strip().lower() or "other"
+    date = (body.date or "").strip()
+    if not date:
+        raise HTTPException(status_code=400, detail="date is required")
+
+    with get_connection() as conn:
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO transactions (user_id, email_id, amount, type, merchant, upi_ref, date, account, category)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    current_user["id"],
+                    email_id,
+                    body.amount,
+                    tx_type,
+                    merchant,
+                    upi_ref,
+                    date,
+                    account,
+                    category,
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise HTTPException(status_code=409, detail="transaction already exists") from exc
+
+        tx_id = cursor.lastrowid
+        row = conn.execute(
+            """
+            SELECT id, email_id, amount, type, merchant, upi_ref, date, account, category
+            FROM transactions
+            WHERE id = ? AND user_id = ?
+            """,
+            (tx_id, current_user["id"]),
+        ).fetchone()
+        conn.commit()
+
+    return dict(row)
+
+
+@app.patch("/transactions/{tx_id}")
+def update_transaction(
+    tx_id: int,
+    body: TransactionUpdate,
+    current_user: dict[str, Any] = Depends(require_auth),
+):
+    fields = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    with get_connection() as conn:
+        # verify ownership
+        row = conn.execute(
+            "SELECT id FROM transactions WHERE id = ? AND user_id = ?",
+            (tx_id, current_user["id"]),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        set_clause = ", ".join(f"{k} = ?" for k in fields)
+        conn.execute(
+            f"UPDATE transactions SET {set_clause} WHERE id = ? AND user_id = ?",
+            (*fields.values(), tx_id, current_user["id"]),
+        )
+        conn.commit()
+
+    return {"ok": True}
+
+
+@app.delete("/transactions/{tx_id}")
+def delete_transaction(
+    tx_id: int,
+    current_user: dict[str, Any] = Depends(require_auth),
+):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id FROM transactions WHERE id = ? AND user_id = ?",
+            (tx_id, current_user["id"]),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        conn.execute(
+            "DELETE FROM transactions WHERE id = ? AND user_id = ?",
+            (tx_id, current_user["id"]),
+        )
+        conn.commit()
+
+    return {"ok": True}
+
+
+# ── static + dashboard ─────────────────────────────────────────────────────
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/dashboard")
 def dashboard(request: Request):
@@ -449,9 +581,3 @@ def dashboard(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    
-
-
-    
-
-
