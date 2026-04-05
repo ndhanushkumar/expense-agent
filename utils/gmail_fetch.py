@@ -17,7 +17,10 @@ def fetch_hdfc_emails(max_results=10, service=None):
     if configured_query:
         query = configured_query
     else:
-        base_query = os.getenv("GMAIL_SEARCH_BASE_QUERY", "from:alerts@hdfcbank.bank.in")
+        base_query = os.getenv(
+            "GMAIL_SEARCH_BASE_QUERY",
+            "(from:alerts@hdfcbank.bank.in OR from:alerts@hdfcbank.net)",
+        )
         query = _build_last_24h_query(base_query)
 
     result = service.users().messages().list(
