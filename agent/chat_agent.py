@@ -26,7 +26,7 @@ _STRIP_COLS = {"id", "user_id", "email_id"}
 
 
 @tool
-def run_query(sql: str) -> list[dict[str, Any]]:
+def run_query(sql: str, user_id: int) -> list[dict[str, Any]]:
     """Execute a SELECT SQL query on the transactions table and return rows."""
     normalized = " ".join((sql or "").strip().split()).lower()
 
