@@ -541,7 +541,7 @@ def nl_query(body: NLQueryRequest, current_user: dict[str, Any] = Depends(requir
         raise HTTPException(status_code=400, detail="query parameter 'q' is required")
 
     try:
-        result = chat_agent.invoke(q, current_user["id"])
+        result = chat_agent.invoke(q, current_user["id"],current_user["email"])
         if isinstance(result, dict):
             summary = str(result.get("summary") or "").strip()
             rows = result.get("rows") if isinstance(result.get("rows"), list) else []

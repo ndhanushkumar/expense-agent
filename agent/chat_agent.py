@@ -4,11 +4,12 @@ import os
 import re
 import sys
 
+from functools import partial
 from pathlib import Path
 from typing import Any
 from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain.messages import HumanMessage
+from langchain.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
 
@@ -16,10 +17,32 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-
 from db.store import get_connection
 load_dotenv()
 
+_BLOCKED_KEYWORDS = {"drop", "delete", "update", "insert", "alter", "attach", "detach", "pragma", "vacuum"}
+_STRIP_COLS = {"id", "user_id", "email_id"}
+
+
+
+@tool
+def run_query(sql: str) -> list[dict[str, Any]]:
+    """Execute a SELECT SQL query on the transactions table and return rows."""
+    normalized = " ".join((sql or "").strip().split()).lower()
+
+    if not normalized.startswith("select"):
+        raise ValueError("Only SELECT queries are allowed")
+
+    for kw in _BLOCKED_KEYWORDS:
+        if kw in normalized:
+            raise ValueError(f"Blocked keyword in query: {kw}")
+
+    # strip multiple statements
+    safe_sql = sql.split(";")[0].strip()
+    print(f"Executing SQL for user {user_id}: {safe_sql}")
+    with get_connection() as conn:
+        rows = conn.execute(safe_sql).fetchall()
+        return [{k: v for k, v in dict(row).items() if k not in _STRIP_COLS} for row in rows]
 
 
 ollama_llm = ChatOllama(
@@ -27,29 +50,18 @@ ollama_llm = ChatOllama(
     host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
     api_key=os.getenv("OLLAMA_API_KEY")
 )
-@tool
-def run_query(query: str) -> list[dict[str, Any]]:
-    """Run a read-only SQL query against transactions and return rows as objects."""
-    normalized = " ".join((query or "").strip().split())
-    if not normalized.lower().startswith("select"):
-        raise ValueError("Only SELECT queries are allowed")
 
-    with get_connection() as conn:
-        rows = conn.execute(query).fetchall()
-        return [dict(row) for row in rows]
-
-
-
-chat_agent = create_agent(
-    model=ollama_llm,
-    tools=[run_query],
-    system_prompt=(
-        "You are a helpful assistant for analyzing bank transactions. "
-        "table has columns: id, user_id, amount, type, merchant, upi_ref, payment_mode, date, account, email_id, category. "
-        "Use run_query for SQL access to the transactions table. "
-        "Return ONLY JSON matching schema: {summary:string, stats:[{label,value}], rows:[object], sql?:string}. "
-        "Do not use markdown or code fences."
-    ),
+_SYSTEM_PROMPT = (
+    "You are a personal expense assistant. "
+    "Always call run_query to fetch real data — never guess or fabricate numbers. "
+    "The transactions table has columns: id, user_id, amount, type, merchant, upi_ref, payment_mode, date, account, category. "
+    "date is stored as DD-MM-YY string (e.g. 05-04-26). "
+    "type is either 'debited' or 'credited'. "
+    "Refer to the user as 'you', never mention user_id or internal IDs. "
+    "After calling run_query, return ONLY a JSON object: "
+    '{"summary": "...", "stats": [{"label": "...", "value": "..."}], "rows": [...]}. '
+    "No markdown, no code fences. Just the JSON."
+    "category is one of ['food', 'entertainment', 'utilities', 'shopping', 'other','persons','transport'] based on merchant. "
 )
 
 
@@ -85,9 +97,10 @@ def _coerce_dashboard_payload(payload: Any) -> dict[str, Any]:
     rows_raw = payload.get("rows", [])
     rows = rows_raw if isinstance(rows_raw, list) else []
     normalized_rows: list[dict[str, Any]] = []
+    _strip_cols = {"id", "user_id", "email_id"}
     for row in rows:
         if isinstance(row, dict):
-            normalized_rows.append(row)
+            normalized_rows.append({k: v for k, v in row.items() if k not in _strip_cols})
 
     stats_raw = payload.get("stats", [])
     normalized_stats: list[dict[str, str]] = []
@@ -112,24 +125,19 @@ def _coerce_dashboard_payload(payload: Any) -> dict[str, Any]:
     return result
 
 
-def invoke(input: str, user_id: int) -> dict[str, Any]:
-    response = chat_agent.invoke({
+def invoke(input: str, user_id: int, email: str) -> dict[str, Any]:
+    agent = create_agent(
+        model=ollama_llm,
+        tools=[run_query],
+        system_prompt=_SYSTEM_PROMPT,
+    )
+    response = agent.invoke({
         "messages": [
-            HumanMessage(
-                content=(
-                    f"User {user_id} asked: {input}\n\n"
-                    "Important: only use data where user_id matches this user. "
-                    f"Always filter SQL with user_id = {user_id}."
-                )
-            )
+            HumanMessage(content=f"Question: {input}")
         ]
     })
 
     if isinstance(response, dict):
-        structured = response.get("structured_response")
-        if isinstance(structured, dict):
-            return _coerce_dashboard_payload(structured)
-
         messages = response.get("messages") or []
         if messages:
             content = messages[-1].content

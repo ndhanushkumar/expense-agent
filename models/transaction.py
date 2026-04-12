@@ -9,5 +9,5 @@ class Transaction(BaseModel):
     upi_ref: Optional[str] = None
     date: str
     account: Optional[str] = None
-    category: Literal["food", "entertainment", "utilities", "shopping", "other","persons"] = "other"
+    category: Literal["food", "entertainment", "utilities", "shopping", "other","persons",'transport'] = "other"
     payment_mode: Literal["upi", "credit_card", "debit_card"] = "debit_card"
