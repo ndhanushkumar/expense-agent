@@ -13,6 +13,7 @@ from typing import Any, Optional
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
+from agent import chat_agent
 from agent.agent import run
 from db.store import get_connection, initialize_db
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
@@ -458,6 +459,10 @@ class TransactionCreate(BaseModel):
     payment_mode: Optional[str] = None
 
 
+class NLQueryRequest(BaseModel):
+    q: str
+
+
 def normalize_payment_mode(value: str | None, upi_ref: str | None = None) -> str:
     raw = (value or "").strip().lower()
     if raw in {"upi", "credit_card", "debit_card"}:
@@ -528,6 +533,34 @@ def create_transaction(
         conn.commit()
 
     return dict(row)
+
+@app.post("/transactions/query")
+def nl_query(body: NLQueryRequest, current_user: dict[str, Any] = Depends(require_auth)):
+    q = (body.q or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="query parameter 'q' is required")
+
+    try:
+        result = chat_agent.invoke(q, current_user["id"])
+        if isinstance(result, dict):
+            summary = str(result.get("summary") or "").strip()
+            rows = result.get("rows") if isinstance(result.get("rows"), list) else []
+            stats = result.get("stats") if isinstance(result.get("stats"), list) else []
+
+            payload: dict[str, Any] = {
+                "summary": summary or ("Done." if not rows else ""),
+                "rows": rows,
+                "stats": stats,
+            }
+            if result.get("sql") is not None:
+                payload["sql"] = result.get("sql")
+            return payload
+
+        return {"summary": str(result), "rows": [], "stats": []}
+    except Exception as exc:
+        logger.exception("NL query failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to process query") from exc
+
 
 
 @app.patch("/transactions/{tx_id}")
