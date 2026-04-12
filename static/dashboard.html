@@ -39,6 +39,9 @@
         min-height: 100vh;
         -webkit-font-smoothing: antialiased;
       }
+      body.chat-open {
+        overflow: hidden;
+      }
 
       /* header */
       header {
@@ -776,8 +779,12 @@
         font-size: 13px;
         font-weight: 500;
       }
-      .m-amount.debited { color: var(--red); }
-      .m-amount.credited { color: var(--green); }
+      .m-amount.debited {
+        color: var(--red);
+      }
+      .m-amount.credited {
+        color: var(--green);
+      }
       .m-card-actions {
         display: flex;
         flex-direction: row;
@@ -819,13 +826,71 @@
 
       /* ── chat ─────────────────────────────────────────────────────────── */
       .chat-section {
-        margin-bottom: 20px;
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 180;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: flex-end;
+        gap: 10px;
+        pointer-events: none;
+      }
+      .chat-section > * {
+        pointer-events: auto;
+      }
+      .chat-launcher {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--text);
+        background: var(--text);
+        color: var(--surface);
+        border-radius: 999px;
+        padding: 10px 14px;
+        cursor: pointer;
+        box-shadow: 0 10px 28px rgba(26, 24, 22, 0.2);
+        transition:
+          transform 0.15s,
+          opacity 0.15s;
+      }
+      .chat-launcher:hover {
+        transform: translateY(-1px);
+      }
+      .chat-launcher-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.14);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+      }
+      .chat-launcher-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
       .chat-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--radius);
         overflow: hidden;
+        display: none;
+        width: min(430px, calc(100vw - 32px));
+        height: min(72vh, 640px);
+        box-shadow: 0 16px 44px rgba(26, 24, 22, 0.18);
+        flex-direction: column;
+      }
+      .chat-section.open .chat-card {
+        display: flex;
+      }
+      .chat-section.open .chat-launcher {
+        display: none;
       }
       .chat-header {
         display: flex;
@@ -833,10 +898,13 @@
         justify-content: space-between;
         padding: 12px 16px;
         border-bottom: 1px solid var(--border);
-        cursor: pointer;
-        user-select: none;
       }
       .chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .chat-header-actions {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -857,27 +925,36 @@
         color: var(--muted);
         border: 1px solid var(--border);
       }
-      .chat-toggle-icon {
+      .chat-close-btn {
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 100px;
+        padding: 4px 8px;
         color: var(--muted);
-        transition: transform 0.2s;
+        cursor: pointer;
+        transition: all 0.15s;
       }
-      .chat-toggle-icon.open {
-        transform: rotate(180deg);
+      .chat-close-btn:hover {
+        color: var(--text);
+        border-color: var(--text);
+        background: var(--surface2);
       }
       .chat-body {
-        display: none;
-        flex-direction: column;
-      }
-      .chat-body.open {
         display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
       }
       .chat-messages {
         display: flex;
         flex-direction: column;
         gap: 0;
-        max-height: 340px;
+        flex: 1;
+        min-height: 0;
         overflow-y: auto;
         padding: 0;
       }
@@ -941,8 +1018,12 @@
         margin-top: 2px;
         width: 32px;
       }
-      .chat-msg.user .chat-msg-role { color: var(--text); }
-      .chat-msg.assistant .chat-msg-role { color: var(--muted); }
+      .chat-msg.user .chat-msg-role {
+        color: var(--text);
+      }
+      .chat-msg.assistant .chat-msg-role {
+        color: var(--muted);
+      }
       .chat-msg-content {
         flex: 1;
         min-width: 0;
@@ -984,8 +1065,12 @@
         color: var(--text);
         vertical-align: middle;
       }
-      .chat-result-table tr:last-child td { border-bottom: none; }
-      .chat-result-table tbody tr:hover td { background: var(--bg); }
+      .chat-result-table tr:last-child td {
+        border-bottom: none;
+      }
+      .chat-result-table tbody tr:hover td {
+        background: var(--bg);
+      }
       .chat-stat-row {
         display: flex;
         gap: 12px;
@@ -1027,11 +1112,23 @@
         background: var(--muted);
         animation: chatdot 1.2s ease-in-out infinite;
       }
-      .chat-dots span:nth-child(2) { animation-delay: 0.2s; }
-      .chat-dots span:nth-child(3) { animation-delay: 0.4s; }
+      .chat-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .chat-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
       @keyframes chatdot {
-        0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-        40% { opacity: 1; transform: scale(1); }
+        0%,
+        80%,
+        100% {
+          opacity: 0.2;
+          transform: scale(0.8);
+        }
+        40% {
+          opacity: 1;
+          transform: scale(1);
+        }
       }
       .chat-error {
         font-family: var(--mono);
@@ -1048,6 +1145,7 @@
         padding: 12px 16px;
         border-top: 1px solid var(--border);
         background: var(--surface);
+        flex-shrink: 0;
       }
       .chat-input {
         flex: 1;
@@ -1063,13 +1161,17 @@
         line-height: 1.5;
         min-height: 36px;
         max-height: 100px;
-        transition: border-color 0.15s, background 0.15s;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
       }
       .chat-input:focus {
         border-color: var(--text);
         background: var(--surface);
       }
-      .chat-input::placeholder { color: var(--muted); }
+      .chat-input::placeholder {
+        color: var(--muted);
+      }
       .chat-send {
         font-family: var(--mono);
         font-size: 11px;
@@ -1085,26 +1187,91 @@
         align-self: flex-end;
         transition: opacity 0.15s;
       }
-      .chat-send:hover { opacity: 0.85; }
-      .chat-send:disabled { opacity: 0.35; cursor: not-allowed; }
-      .chat-clear {
-        font-family: var(--mono);
-        font-size: 10px;
-        color: var(--muted);
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 2px 4px;
-        letter-spacing: 0.04em;
+      .chat-send:hover {
+        opacity: 0.85;
       }
-      .chat-clear:hover { color: var(--text); }
+      .chat-send:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .chat-clear {
+        width: 28px;
+        height: 28px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      }
+      .chat-clear svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .chat-clear:hover {
+        color: var(--text);
+        border-color: var(--text);
+        background: var(--surface2);
+      }
       @media (max-width: 680px) {
-        .chat-examples { flex-direction: column; align-items: stretch; }
-        .chat-example { text-align: center; }
-        .chat-stat-row { gap: 8px; }
-        .chat-stat { flex: 1; min-width: 0; }
-        .chat-result-table { font-size: 10px; }
-        .chat-result-table th, .chat-result-table td { padding: 5px 7px; }
+        .chat-section {
+          right: 12px;
+          bottom: 12px;
+        }
+        .chat-launcher {
+          padding: 10px 12px;
+        }
+        .chat-launcher-label {
+          display: none;
+        }
+        .chat-section.open {
+          inset: 0;
+          align-items: stretch;
+        }
+        .chat-section.open .chat-card {
+          width: 100vw;
+          height: 100dvh;
+          border-radius: 0;
+          border: none;
+          max-width: none;
+          max-height: none;
+        }
+        .chat-section.open .chat-header {
+          padding-top: calc(12px + env(safe-area-inset-top));
+        }
+        .chat-section.open .chat-input-row {
+          padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        }
+        .chat-examples {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .chat-example {
+          text-align: center;
+        }
+        .chat-stat-row {
+          gap: 8px;
+        }
+        .chat-stat {
+          flex: 1;
+          min-width: 0;
+        }
+        .chat-result-table {
+          font-size: 10px;
+        }
+        .chat-result-table th,
+        .chat-result-table td {
+          padding: 5px 7px;
+        }
       }
 
       /* pagination */
@@ -1413,7 +1580,9 @@
 
       <div class="two-col">
         <div class="card">
-          <div class="card-title" id="title-merchants">Top merchants by spend</div>
+          <div class="card-title" id="title-merchants">
+            Top merchants by spend
+          </div>
           <div class="bar-list" id="bars">
             <div class="empty">loading...</div>
           </div>
@@ -1455,26 +1624,73 @@
         </div>
       </div>
 
-      <div class="chat-section">
-        <div class="chat-card">
-          <div class="chat-header" onclick="toggleChat()">
+      <div class="chat-section" id="chat-section">
+        <button
+          class="chat-launcher"
+          id="chat-launcher"
+          type="button"
+          onclick="toggleChat(true)"
+          aria-label="Open expense chat"
+          aria-expanded="false"
+        >
+          <span class="chat-launcher-icon">AI</span>
+          <span class="chat-launcher-label">ask expenses</span>
+        </button>
+        <div class="chat-card" id="chat-card">
+          <div class="chat-header">
             <div class="chat-header-left">
               <span class="chat-header-label">Ask your expenses</span>
               <span class="chat-beta-pill">beta</span>
             </div>
-            <span class="chat-toggle-icon" id="chat-toggle-icon">&#9660;</span>
+            <div class="chat-header-actions">
+              <button
+                class="chat-clear"
+                type="button"
+                onclick="chatNewConversation()"
+                aria-label="Start new chat"
+                title="New chat"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 8v8" />
+                  <path d="M8 12h8" />
+                </svg>
+              </button>
+              <button
+                class="chat-close-btn"
+                type="button"
+                onclick="toggleChat(false)"
+              >
+                close
+              </button>
+            </div>
           </div>
           <div class="chat-body" id="chat-body">
             <div class="chat-messages" id="chat-messages">
               <div class="chat-empty" id="chat-empty">
-                <div class="chat-empty-title">Query your transactions in plain english</div>
-                <div class="chat-empty-sub">Ask anything about your spending — amounts, merchants, dates, categories.</div>
+                <div class="chat-empty-title">
+                  Query your transactions in plain english
+                </div>
+                <div class="chat-empty-sub">
+                  Ask anything about your spending — amounts, merchants, dates,
+                  categories.
+                </div>
                 <div class="chat-examples">
-                  <button class="chat-example" onclick="chatExample(this)">top 5 merchants this month</button>
-                  <button class="chat-example" onclick="chatExample(this)">total UPI spends last week</button>
-                  <button class="chat-example" onclick="chatExample(this)">all credit card transactions above ₹1000</button>
-                  <button class="chat-example" onclick="chatExample(this)">food spends in April</button>
-                  <button class="chat-example" onclick="chatExample(this)">how much did I spend on Swiggy</button>
+                  <button class="chat-example" onclick="chatExample(this)">
+                    top 5 merchants this month
+                  </button>
+                  <button class="chat-example" onclick="chatExample(this)">
+                    total UPI spends last week
+                  </button>
+                  <button class="chat-example" onclick="chatExample(this)">
+                    all credit card transactions above ₹1000
+                  </button>
+                  <button class="chat-example" onclick="chatExample(this)">
+                    food spends in April
+                  </button>
+                  <button class="chat-example" onclick="chatExample(this)">
+                    how much did I spend on Swiggy
+                  </button>
                 </div>
               </div>
             </div>
@@ -1487,7 +1703,9 @@
                 onkeydown="chatKeydown(event)"
                 oninput="chatAutoResize(this)"
               ></textarea>
-              <button class="chat-send" id="chat-send" onclick="chatSend()">send</button>
+              <button class="chat-send" id="chat-send" onclick="chatSend()">
+                send
+              </button>
             </div>
           </div>
         </div>
@@ -1497,13 +1715,19 @@
         <div class="table-toolbar">
           <div class="toolbar-row">
             <div class="filter-tabs">
-              <button class="tab type-tab active" onclick="setFilter('all', this)">
+              <button
+                class="tab type-tab active"
+                onclick="setFilter('all', this)"
+              >
                 All
               </button>
               <button class="tab type-tab" onclick="setFilter('debited', this)">
                 Debited
               </button>
-              <button class="tab type-tab" onclick="setFilter('credited', this)">
+              <button
+                class="tab type-tab"
+                onclick="setFilter('credited', this)"
+              >
                 Credited
               </button>
             </div>
@@ -2111,7 +2335,8 @@
           const mm =
             payFlt === "all" ||
             (payFlt === "credit_card" && mode === "credit_card") ||
-            (payFlt === "upi_debit" && (mode === "upi" || mode === "debit_card"));
+            (payFlt === "upi_debit" &&
+              (mode === "upi" || mode === "debit_card"));
           const ms =
             !q ||
             (t.merchant || "").toLowerCase().includes(q) ||
@@ -2388,6 +2613,9 @@
           if (e.target === el) el.classList.remove("open");
         });
       });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && chatOpen) toggleChat(false);
+      });
 
       function setFilter(f, el) {
         flt = f;
@@ -2424,52 +2652,72 @@
       let chatHistory = [];
       let chatBusy = false;
 
-      function toggleChat() {
-        chatOpen = !chatOpen;
-        document.getElementById('chat-body').classList.toggle('open', chatOpen);
-        document.getElementById('chat-toggle-icon').classList.toggle('open', chatOpen);
-        if (chatOpen) document.getElementById('chat-input').focus();
+      function toggleChat(nextState) {
+        chatOpen = typeof nextState === "boolean" ? nextState : !chatOpen;
+        document
+          .getElementById("chat-section")
+          .classList.toggle("open", chatOpen);
+        document.body.classList.toggle("chat-open", chatOpen);
+        document
+          .getElementById("chat-launcher")
+          .setAttribute("aria-expanded", String(chatOpen));
+        if (chatOpen) {
+          chatScrollBottom();
+          window.requestAnimationFrame(() => {
+            document.getElementById("chat-input").focus();
+          });
+        }
       }
 
       function chatExample(btn) {
-        document.getElementById('chat-input').value = btn.textContent;
-        chatAutoResize(document.getElementById('chat-input'));
+        document.getElementById("chat-input").value = btn.textContent;
+        chatAutoResize(document.getElementById("chat-input"));
         chatSend();
       }
 
+      function chatNewConversation() {
+        if (chatBusy) return;
+        chatHistory = [];
+        const input = document.getElementById("chat-input");
+        input.value = "";
+        input.style.height = "auto";
+        chatRenderMessages();
+        input.focus();
+      }
+
       function chatKeydown(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           chatSend();
         }
       }
 
       function chatAutoResize(el) {
-        el.style.height = 'auto';
-        el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 100) + "px";
       }
 
       function chatScrollBottom() {
-        const el = document.getElementById('chat-messages');
+        const el = document.getElementById("chat-messages");
         el.scrollTop = el.scrollHeight;
       }
 
       function chatRenderMessages() {
-        const el = document.getElementById('chat-messages');
-        const empty = document.getElementById('chat-empty');
+        const el = document.getElementById("chat-messages");
+        const empty = document.getElementById("chat-empty");
         if (!chatHistory.length) {
-          if (empty) empty.style.display = '';
+          if (empty) empty.style.display = "";
           // remove non-empty messages
-          el.querySelectorAll('.chat-msg').forEach(m => m.remove());
+          el.querySelectorAll(".chat-msg").forEach((m) => m.remove());
           return;
         }
-        if (empty) empty.style.display = 'none';
-        el.querySelectorAll('.chat-msg').forEach(m => m.remove());
-        chatHistory.forEach(msg => {
-          const div = document.createElement('div');
+        if (empty) empty.style.display = "none";
+        el.querySelectorAll(".chat-msg").forEach((m) => m.remove());
+        chatHistory.forEach((msg) => {
+          const div = document.createElement("div");
           div.className = `chat-msg ${msg.role}`;
           div.innerHTML = `
-            <div class="chat-msg-role">${msg.role === 'user' ? 'you' : 'ai'}</div>
+            <div class="chat-msg-role">${msg.role === "user" ? "you" : "ai"}</div>
             <div class="chat-msg-content">${msg.html || escHtml(msg.content)}</div>
           `;
           el.appendChild(div);
@@ -2478,80 +2726,107 @@
       }
 
       function escHtml(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
 
       function chatBuildResultHtml(data) {
         // data: { rows, summary, sql }
-        let html = '';
+        let html = "";
         if (data.summary) {
           html += `<div style="margin-bottom:8px;font-size:13px;">${escHtml(data.summary)}</div>`;
         }
         if (data.stats && data.stats.length) {
           html += '<div class="chat-stat-row">';
-          data.stats.forEach(s => {
+          data.stats.forEach((s) => {
             html += `<div class="chat-stat"><div class="chat-stat-label">${escHtml(s.label)}</div><div class="chat-stat-val">${escHtml(s.value)}</div></div>`;
           });
-          html += '</div>';
+          html += "</div>";
         }
         if (data.rows && data.rows.length) {
           const cols = Object.keys(data.rows[0]);
-          html += '<div style="overflow-x:auto;margin-top:10px;"><table class="chat-result-table"><thead><tr>';
-          cols.forEach(c => { html += `<th>${escHtml(c)}</th>`; });
-          html += '</tr></thead><tbody>';
-          data.rows.forEach(row => {
-            html += '<tr>';
-            cols.forEach(c => {
-              let val = row[c];
-              if (c === 'amount' || c === 'total' || c === 'sum') {
-                val = '₹' + Number(val).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
-              }
-              html += `<td>${escHtml(val ?? '—')}</td>`;
-            });
-            html += '</tr>';
+          html +=
+            '<div style="overflow-x:auto;margin-top:10px;"><table class="chat-result-table"><thead><tr>';
+          cols.forEach((c) => {
+            html += `<th>${escHtml(c)}</th>`;
           });
-          html += '</tbody></table></div>';
+          html += "</tr></thead><tbody>";
+          data.rows.forEach((row) => {
+            html += "<tr>";
+            cols.forEach((c) => {
+              let val = row[c];
+              if (c === "amount" || c === "total" || c === "sum") {
+                val =
+                  "₹" +
+                  Number(val).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  });
+              }
+              html += `<td>${escHtml(val ?? "—")}</td>`;
+            });
+            html += "</tr>";
+          });
+          html += "</tbody></table></div>";
         }
-        return html || escHtml(data.summary || 'Done.');
+        return html || escHtml(data.summary || "Done.");
       }
 
       async function chatSend() {
         if (chatBusy) return;
-        const input = document.getElementById('chat-input');
+        const input = document.getElementById("chat-input");
         const q = input.value.trim();
         if (!q) return;
 
         chatBusy = true;
-        document.getElementById('chat-send').disabled = true;
-        input.value = '';
-        input.style.height = 'auto';
+        document.getElementById("chat-send").disabled = true;
+        input.value = "";
+        input.style.height = "auto";
 
-        chatHistory.push({ role: 'user', content: q });
+        chatHistory.push({ role: "user", content: q });
         // add thinking indicator
-        chatHistory.push({ role: 'assistant', content: '', html: '<div class="chat-thinking">thinking <div class="chat-dots"><span></span><span></span><span></span></div></div>' });
+        chatHistory.push({
+          role: "assistant",
+          content: "",
+          html: '<div class="chat-thinking">thinking <div class="chat-dots"><span></span><span></span><span></span></div></div>',
+        });
         chatRenderMessages();
 
         try {
-          const res = await fetch('/transactions/query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ q })
+          const res = await fetch("/transactions/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q }),
           });
           const data = await res.json();
           // replace thinking with result
           chatHistory.pop();
           if (!res.ok) {
-            chatHistory.push({ role: 'assistant', content: '', html: `<div class="chat-error">${escHtml(data.detail || 'Something went wrong')}</div>` });
+            chatHistory.push({
+              role: "assistant",
+              content: "",
+              html: `<div class="chat-error">${escHtml(data.detail || "Something went wrong")}</div>`,
+            });
           } else {
-            chatHistory.push({ role: 'assistant', content: '', html: chatBuildResultHtml(data) });
+            chatHistory.push({
+              role: "assistant",
+              content: "",
+              html: chatBuildResultHtml(data),
+            });
           }
-        } catch(e) {
+        } catch (e) {
           chatHistory.pop();
-          chatHistory.push({ role: 'assistant', content: '', html: `<div class="chat-error">Network error: ${escHtml(e.message)}</div>` });
+          chatHistory.push({
+            role: "assistant",
+            content: "",
+            html: `<div class="chat-error">Network error: ${escHtml(e.message)}</div>`,
+          });
         }
 
         chatBusy = false;
-        document.getElementById('chat-send').disabled = false;
+        document.getElementById("chat-send").disabled = false;
         chatRenderMessages();
         input.focus();
       }
