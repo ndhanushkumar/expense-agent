@@ -6,6 +6,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,7 +17,7 @@ from zoneinfo import ZoneInfo
 from agent import chat_agent
 from agent.agent import run
 from db.store import get_connection, initialize_db
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, status
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
@@ -49,6 +50,8 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
 ]
 logger = logging.getLogger("uvicorn.error")
+manual_job_status_by_user: dict[int, dict[str, Any]] = {}
+manual_job_lock = threading.Lock()
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -218,6 +221,58 @@ def backfill_unowned_transactions_for_first_user(conn, user_id: int) -> None:
         conn.execute(
             "UPDATE transactions SET user_id = ? WHERE user_id IS NULL",
             (user_id,),
+        )
+
+
+def _default_manual_job_status() -> dict[str, Any]:
+    return {
+        "status": "idle",
+        "queued_at": None,
+        "started_at": None,
+        "completed_at": None,
+        "last_error": None,
+    }
+
+
+def get_manual_job_status(user_id: int) -> dict[str, Any]:
+    with manual_job_lock:
+        state = manual_job_status_by_user.get(user_id)
+        if not state:
+            return _default_manual_job_status()
+        return dict(state)
+
+
+def _set_manual_job_status(user_id: int, **updates: Any) -> dict[str, Any]:
+    with manual_job_lock:
+        state = manual_job_status_by_user.get(user_id, _default_manual_job_status())
+        state.update(updates)
+        manual_job_status_by_user[user_id] = state
+        return dict(state)
+
+
+def _run_manual_job_for_user(user_id: int) -> None:
+    _set_manual_job_status(
+        user_id,
+        status="running",
+        started_at=now_utc_iso(),
+        completed_at=None,
+        last_error=None,
+    )
+    try:
+        run(max_emails=JOB_MAX_EMAILS, user_id=user_id)
+        _set_manual_job_status(
+            user_id,
+            status="idle",
+            completed_at=now_utc_iso(),
+            last_error=None,
+        )
+    except Exception as exc:
+        logger.exception("Manual job failed for user %s: %s", user_id, exc)
+        _set_manual_job_status(
+            user_id,
+            status="idle",
+            completed_at=now_utc_iso(),
+            last_error=str(exc),
         )
 
 
@@ -391,6 +446,7 @@ def job_status(current_user: dict[str, Any] = Depends(require_auth)):
     job = scheduler.get_job("daily_expense_job")
     with get_connection() as conn:
         connected_users = conn.execute("SELECT COUNT(*) FROM gmail_tokens").fetchone()[0]
+    manual_status = get_manual_job_status(current_user["id"])
     return {
         "scheduler_running": scheduler.running,
         "job_id": job.id if job else None,
@@ -402,7 +458,56 @@ def job_status(current_user: dict[str, Any] = Depends(require_auth)):
         },
         "max_emails_per_run": JOB_MAX_EMAILS,
         "gmail_connected_users": connected_users,
+        "manual_run": manual_status,
     }
+
+
+@app.post("/job/run-now")
+def run_job_now(
+    background_tasks: BackgroundTasks,
+    current_user: dict[str, Any] = Depends(require_auth),
+):
+    user_id = current_user["id"]
+
+    with get_connection() as conn:
+        connected = conn.execute(
+            "SELECT 1 FROM gmail_tokens WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+    if not connected:
+        raise HTTPException(status_code=400, detail="Connect Gmail before running the job")
+
+    state = get_manual_job_status(user_id)
+    if state["status"] in {"queued", "running"}:
+        return {
+            "accepted": False,
+            "status": state["status"],
+            "message": "A manual job is already in progress",
+            "queued_at": state.get("queued_at"),
+            "started_at": state.get("started_at"),
+        }
+
+    queued_at = now_utc_iso()
+    _set_manual_job_status(
+        user_id,
+        status="queued",
+        queued_at=queued_at,
+        started_at=None,
+        completed_at=None,
+        last_error=None,
+    )
+    background_tasks.add_task(_run_manual_job_for_user, user_id)
+
+    return {
+        "accepted": True,
+        "status": "queued",
+        "queued_at": queued_at,
+    }
+
+
+@app.get("/job/run-now/status")
+def run_job_now_status(current_user: dict[str, Any] = Depends(require_auth)):
+    return get_manual_job_status(current_user["id"])
 
 
 # ── transactions ───────────────────────────────────────────────────────────

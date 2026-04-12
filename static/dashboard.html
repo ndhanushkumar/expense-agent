@@ -131,6 +131,28 @@
         color: var(--surface);
         border-color: var(--text);
       }
+      .manual-job-btn {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 100px;
+        padding: 5px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .manual-job-btn.running {
+        background: var(--surface2);
+        color: var(--muted);
+      }
+      .manual-job-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
       .live-pill {
         display: flex;
         align-items: center;
@@ -151,6 +173,96 @@
         border-radius: 50%;
         animation: blink 2s ease-in-out infinite;
         flex-shrink: 0;
+      }
+      .hdr-menu-btn {
+        display: none;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 100px;
+        padding: 5px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .hdr-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 14px;
+        width: min(300px, calc(100vw - 20px));
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 14px 32px rgba(26, 24, 22, 0.16);
+        padding: 12px;
+        z-index: 130;
+      }
+      .hdr-menu.open {
+        display: block;
+      }
+      .hdr-menu-user {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text);
+        background: var(--surface2);
+        border-radius: 10px;
+        padding: 8px 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .hdr-menu-gmail {
+        margin-top: 8px;
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        background: var(--surface2);
+        color: var(--muted);
+      }
+      .hdr-menu-gmail.connected {
+        background: var(--green-bg);
+        color: var(--green);
+      }
+      .hdr-menu-gmail.disconnected {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+      .hdr-menu-actions {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .hdr-menu-action {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+      .hdr-menu-action.running {
+        background: var(--surface2);
+        color: var(--muted);
+      }
+      .hdr-menu-action.danger {
+        background: var(--red-bg);
+        color: var(--red);
+        border-color: transparent;
+      }
+      .hdr-menu-action:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
       }
       @keyframes blink {
         0%,
@@ -1465,11 +1577,24 @@
         header {
           padding: 0 14px;
         }
+        .header-right {
+          overflow: visible;
+          gap: 8px;
+        }
         .user-chip {
           display: none;
         }
         .gmail-pill {
           display: none;
+        }
+        .manual-job-btn,
+        .logout-btn {
+          display: none;
+        }
+        .hdr-menu-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
         .content {
           padding: 14px;
@@ -1532,6 +1657,10 @@
         }
       }
       @media (max-width: 400px) {
+        .manual-job-btn {
+          padding: 5px 8px;
+          font-size: 10px;
+        }
         .logout-btn {
           padding: 5px 8px;
           font-size: 10px;
@@ -1548,12 +1677,53 @@
       <div class="header-right">
         <div class="user-chip" id="user-email">loading user</div>
         <div class="gmail-pill" id="gmail-status">gmail: checking</div>
+        <button
+          class="manual-job-btn"
+          id="run-job-btn"
+          type="button"
+          onclick="triggerManualJob()"
+        >
+          refresh
+        </button>
         <button class="logout-btn" type="button" onclick="logoutUser()">
           logout
         </button>
         <div class="live-pill">
           <div class="live-dot"></div>
           <span id="live-txt">connecting</span>
+        </div>
+        <button
+          class="hdr-menu-btn"
+          id="header-menu-btn"
+          type="button"
+          onclick="toggleHeaderMenu()"
+          aria-expanded="false"
+          aria-controls="header-menu"
+        >
+          menu
+        </button>
+      </div>
+      <div class="hdr-menu" id="header-menu">
+        <div class="hdr-menu-user" id="user-email-mobile">loading user</div>
+        <div class="hdr-menu-gmail" id="gmail-status-mobile">
+          gmail: checking
+        </div>
+        <div class="hdr-menu-actions">
+          <button
+            class="hdr-menu-action"
+            id="run-job-btn-mobile"
+            type="button"
+            onclick="triggerManualJob()"
+          >
+            refresh
+          </button>
+          <button
+            class="hdr-menu-action danger"
+            type="button"
+            onclick="logoutUser()"
+          >
+            logout
+          </button>
         </div>
       </div>
     </header>
@@ -2017,6 +2187,16 @@
         dayChartInst = null;
       let editingId = null,
         deletingId = null;
+      let gmailConnected = false,
+        manualJobStatus = {
+          status: "idle",
+          queued_at: null,
+          started_at: null,
+          completed_at: null,
+          last_error: null,
+        },
+        manualJobPollHandle = null,
+        mobileHeaderMenuOpen = false;
 
       const fmt = (n) =>
         "₹" +
@@ -2098,11 +2278,19 @@
 
       function setGmailStatus(gmail) {
         const badge = document.getElementById("gmail-status");
+        const mobileBadge = document.getElementById("gmail-status-mobile");
         const connected = Boolean(gmail && gmail.connected);
+        gmailConnected = connected;
         badge.className =
           "gmail-pill " + (connected ? "connected" : "disconnected");
+        if (mobileBadge) {
+          mobileBadge.className =
+            "hdr-menu-gmail " + (connected ? "connected" : "disconnected");
+        }
         if (!connected) {
           badge.textContent = "gmail: not connected";
+          if (mobileBadge) mobileBadge.textContent = "gmail: not connected";
+          updateManualJobButton();
           return;
         }
         const when = gmail.updated_at
@@ -2112,6 +2300,153 @@
             })
           : "now";
         badge.textContent = `gmail: connected (${when})`;
+        if (mobileBadge) mobileBadge.textContent = `gmail: connected (${when})`;
+        updateManualJobButton();
+      }
+
+      function updateManualJobButton() {
+        const buttons = [
+          document.getElementById("run-job-btn"),
+          document.getElementById("run-job-btn-mobile"),
+        ].filter(Boolean);
+        if (!buttons.length) return;
+
+        const status = manualJobStatus?.status || "idle";
+        buttons.forEach((btn) => {
+          btn.classList.remove("running");
+          btn.title = "";
+
+          if (!gmailConnected) {
+            btn.disabled = true;
+            btn.textContent = "connect gmail";
+            return;
+          }
+
+          if (status === "queued") {
+            btn.disabled = true;
+            btn.classList.add("running");
+            btn.textContent = "refresh queued...";
+            btn.title = "Manual refresh is queued";
+            return;
+          }
+          if (status === "running") {
+            btn.disabled = true;
+            btn.classList.add("running");
+            btn.textContent = "refreshing...";
+            btn.title = "Manual refresh is running";
+            return;
+          }
+
+          btn.disabled = false;
+          btn.textContent = manualJobStatus?.last_error
+            ? "refresh (retry)"
+            : "refresh";
+
+          if (manualJobStatus?.last_error) {
+            btn.title = `Last refresh failed: ${manualJobStatus.last_error}`;
+            return;
+          }
+          if (manualJobStatus?.completed_at) {
+            const when = new Date(manualJobStatus.completed_at);
+            if (!Number.isNaN(when.getTime())) {
+              btn.title = `Last refresh: ${when.toLocaleString("en-IN")}`;
+            }
+          }
+        });
+      }
+
+      function toggleHeaderMenu(nextState) {
+        const menu = document.getElementById("header-menu");
+        const btn = document.getElementById("header-menu-btn");
+        if (!menu || !btn) return;
+        mobileHeaderMenuOpen =
+          typeof nextState === "boolean" ? nextState : !mobileHeaderMenuOpen;
+        menu.classList.toggle("open", mobileHeaderMenuOpen);
+        btn.setAttribute("aria-expanded", String(mobileHeaderMenuOpen));
+      }
+
+      async function loadTransactions() {
+        const r = await fetch(`${API}/transactions?limit=500`);
+        if (r.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!r.ok) throw new Error(r.statusText);
+        all = (await r.json()).items || [];
+        render();
+      }
+
+      async function syncManualJobStatus() {
+        const res = await fetch("/job/run-now/status");
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!res.ok) return;
+        manualJobStatus = await res.json();
+        updateManualJobButton();
+      }
+
+      function startManualJobPolling() {
+        if (manualJobPollHandle) return;
+        manualJobPollHandle = window.setInterval(async () => {
+          const prev = manualJobStatus?.status || "idle";
+          await syncManualJobStatus();
+          const next = manualJobStatus?.status || "idle";
+          if ((prev === "running" || prev === "queued") && next === "idle") {
+            await loadTransactions();
+          }
+          if (next !== "running" && next !== "queued") {
+            clearInterval(manualJobPollHandle);
+            manualJobPollHandle = null;
+          }
+        }, 3000);
+      }
+
+      async function triggerManualJob() {
+        toggleHeaderMenu(false);
+        if (!gmailConnected) {
+          alert("Connect Gmail before refreshing.");
+          return;
+        }
+
+        manualJobStatus = {
+          ...manualJobStatus,
+          status: "queued",
+          last_error: null,
+        };
+        updateManualJobButton();
+
+        try {
+          const res = await fetch("/job/run-now", {
+            method: "POST",
+          });
+          const data = await res.json();
+          if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+          }
+          if (!res.ok) {
+            throw new Error(
+              data.detail || data.message || "Unable to start manual job",
+            );
+          }
+
+          manualJobStatus = {
+            ...manualJobStatus,
+            ...data,
+          };
+          updateManualJobButton();
+          startManualJobPolling();
+        } catch (e) {
+          manualJobStatus = {
+            ...manualJobStatus,
+            status: "idle",
+            last_error: e.message,
+          };
+          updateManualJobButton();
+          alert("Manual refresh failed to start: " + e.message);
+        }
       }
 
       async function init() {
@@ -2125,17 +2460,19 @@
             const meData = await meRes.json();
             document.getElementById("user-email").textContent =
               meData.user.email;
+            const mobileEmail = document.getElementById("user-email-mobile");
+            if (mobileEmail) mobileEmail.textContent = meData.user.email;
             setGmailStatus(meData.gmail);
           }
-          const r = await fetch(`${API}/transactions?limit=500`);
-          if (r.status === 401) {
-            window.location.href = "/login";
-            return;
+          await syncManualJobStatus();
+          if (
+            manualJobStatus.status === "queued" ||
+            manualJobStatus.status === "running"
+          ) {
+            startManualJobPolling();
           }
-          if (!r.ok) throw new Error(r.statusText);
-          all = (await r.json()).items || [];
+          await loadTransactions();
           document.getElementById("live-txt").textContent = "live";
-          render();
         } catch (e) {
           document.getElementById("live-txt").textContent = "offline";
           document.getElementById("tbl").innerHTML =
@@ -2617,8 +2954,17 @@
           if (e.target === el) el.classList.remove("open");
         });
       });
+      document.addEventListener("click", (e) => {
+        if (!mobileHeaderMenuOpen) return;
+        const menu = document.getElementById("header-menu");
+        const btn = document.getElementById("header-menu-btn");
+        if (!menu || !btn) return;
+        if (menu.contains(e.target) || btn.contains(e.target)) return;
+        toggleHeaderMenu(false);
+      });
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && chatOpen) toggleChat(false);
+        if (e.key === "Escape" && mobileHeaderMenuOpen) toggleHeaderMenu(false);
       });
 
       function setFilter(f, el) {
