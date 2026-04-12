@@ -5,27 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Expense Agent</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
       :root {
-        --bg: #f5f3ee;
+        --bg: #f8fafc;
         --surface: #ffffff;
-        --surface2: #edeae3;
-        --border: #ddd9d0;
-        --text: #1a1816;
-        --muted: #9b9488;
-        --green-bg: #d4f0dd;
-        --green: #1a7a40;
-        --red-bg: #fde8e8;
-        --red: #c0392b;
-        --yellow: #e8b84b;
-        --mono: "IBM Plex Mono", monospace;
-        --sans: "Cabinet Grotesk", sans-serif;
-        --radius: 16px;
-        --radius-sm: 10px;
+        --surface2: #f1f5f9;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --green-bg: #dcfce7;
+        --green: #166534;
+        --red-bg: #fee2e2;
+        --red: #b91c1c;
+        --yellow: #334155;
+        --mono: "JetBrains Mono", monospace;
+        --sans: "Inter", sans-serif;
+        --radius: 14px;
+        --radius-sm: 9px;
       }
       * {
         margin: 0;
@@ -48,7 +48,7 @@
         background: var(--surface);
         border-bottom: 1px solid var(--border);
         padding: 0 20px;
-        height: 52px;
+        height: 60px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -198,7 +198,7 @@
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 14px;
-        box-shadow: 0 14px 32px rgba(26, 24, 22, 0.16);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
         padding: 12px;
         z-index: 130;
       }
@@ -276,7 +276,7 @@
 
       /* layout */
       .content {
-        padding: 24px;
+        padding: 26px 24px 28px;
         max-width: 1080px;
         margin: 0 auto;
         width: 100%;
@@ -299,8 +299,8 @@
           box-shadow 0.15s;
       }
       .stat:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+        transform: none;
+        box-shadow: none;
       }
       .stat-label {
         font-family: var(--mono);
@@ -528,7 +528,7 @@
       .tab.active {
         background: var(--surface);
         color: var(--text);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        box-shadow: none;
       }
       .search {
         font-family: var(--mono);
@@ -545,7 +545,7 @@
           background 0.15s;
       }
       .search:focus {
-        border-color: var(--text);
+        border-color: var(--yellow);
         background: var(--surface);
       }
       .search::placeholder {
@@ -561,15 +561,16 @@
         font-size: 11px;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        border: 1px solid var(--text);
-        background: var(--text);
-        color: var(--surface);
+        border: 1px solid var(--yellow);
+        background: var(--yellow);
+        color: #fff;
         border-radius: var(--radius-sm);
         padding: 7px 12px;
         cursor: pointer;
       }
       .add-btn:hover {
-        opacity: 0.85;
+        background: #1d4ed8;
+        border-color: #1d4ed8;
       }
 
       /* date controls */
@@ -594,7 +595,7 @@
         cursor: pointer;
       }
       .date-input:focus {
-        border-color: var(--text);
+        border-color: var(--yellow);
         background: var(--surface);
       }
       .date-sep {
@@ -614,8 +615,8 @@
         transition: all 0.15s;
       }
       .date-clear:hover {
-        border-color: var(--text);
-        color: var(--text);
+        border-color: var(--yellow);
+        color: var(--yellow);
       }
 
       /* group toggle */
@@ -639,7 +640,7 @@
         flex-shrink: 0;
       }
       .toggle-track.on {
-        background: var(--text);
+        background: var(--yellow);
       }
       .toggle-knob {
         width: 12px;
@@ -955,19 +956,21 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        border: 1px solid var(--text);
-        background: var(--text);
-        color: var(--surface);
+        border: 1px solid var(--yellow);
+        background: var(--yellow);
+        color: #fff;
         border-radius: 999px;
         padding: 10px 14px;
         cursor: pointer;
-        box-shadow: 0 10px 28px rgba(26, 24, 22, 0.2);
+        box-shadow: none;
         transition:
           transform 0.15s,
           opacity 0.15s;
       }
       .chat-launcher:hover {
-        transform: translateY(-1px);
+        transform: none;
+        background: #1e293b;
+        border-color: #1e293b;
       }
       .chat-launcher-icon {
         width: 22px;
@@ -995,7 +998,7 @@
         display: none;
         width: min(430px, calc(100vw - 32px));
         height: min(72vh, 640px);
-        box-shadow: 0 16px 44px rgba(26, 24, 22, 0.18);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
         flex-direction: column;
       }
       .chat-section.open .chat-card {
@@ -1140,8 +1143,8 @@
         line-height: 1.55;
       }
       .chat-msg.user .chat-msg-bubble {
-        background: var(--text);
-        color: var(--surface);
+        background: var(--yellow);
+        color: #fff;
         border-radius: 12px 12px 2px 12px;
       }
       .chat-msg.assistant .chat-msg-bubble {
@@ -1279,7 +1282,7 @@
           background 0.15s;
       }
       .chat-input:focus {
-        border-color: var(--text);
+        border-color: var(--yellow);
         background: var(--surface);
       }
       .chat-input::placeholder {
@@ -1294,9 +1297,9 @@
         letter-spacing: 0.05em;
         text-transform: uppercase;
         padding: 8px 14px;
-        border: 1px solid var(--text);
-        background: var(--text);
-        color: var(--surface);
+        border: 1px solid var(--yellow);
+        background: var(--yellow);
+        color: #fff;
         border-radius: var(--radius-sm);
         cursor: pointer;
         flex-shrink: 0;
@@ -1420,9 +1423,9 @@
         font-weight: 500;
       }
       .page-btn:hover:not(:disabled) {
-        background: var(--text);
-        color: var(--surface);
-        border-color: var(--text);
+        background: var(--yellow);
+        color: #fff;
+        border-color: var(--yellow);
       }
       .page-btn:disabled {
         opacity: 0.3;
@@ -1441,7 +1444,7 @@
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(26, 24, 22, 0.45);
+        background: rgba(15, 23, 42, 0.4);
         z-index: 200;
         align-items: center;
         justify-content: center;
@@ -1499,7 +1502,7 @@
           background 0.15s;
       }
       .field-input:focus {
-        border-color: var(--text);
+        border-color: var(--yellow);
         background: var(--surface);
       }
       .field-select {
@@ -1536,13 +1539,13 @@
         color: var(--muted);
       }
       .modal-btn.cancel:hover {
-        border-color: var(--text);
-        color: var(--text);
+        border-color: var(--yellow);
+        color: var(--yellow);
       }
       .modal-btn.save {
-        background: var(--text);
-        color: var(--surface);
-        border-color: var(--text);
+        background: var(--yellow);
+        color: #fff;
+        border-color: var(--yellow);
       }
       .modal-btn.save:hover {
         opacity: 0.85;

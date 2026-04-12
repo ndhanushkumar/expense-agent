@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login | Expense Agent</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Cabinet+Grotesk:wght@500;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <style>
       :root {
-        --bg: #f5f3ee;
-        --ink: #1c1a17;
-        --muted: #8e877b;
-        --card: #fff;
-        --line: #ddd9d0;
-        --accent: #e8b84b;
-        --accent-ink: #3a2a03;
-        --mono: "IBM Plex Mono", monospace;
-        --sans: "Cabinet Grotesk", sans-serif;
+        --bg: #f8fafc;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --card: #ffffff;
+        --line: #e2e8f0;
+        --accent: #334155;
+        --mono: "JetBrains Mono", monospace;
+        --sans: "Inter", sans-serif;
       }
       * {
         box-sizing: border-box;
@@ -28,95 +27,90 @@
         min-height: 100vh;
         font-family: var(--sans);
         color: var(--ink);
-        background:
-          radial-gradient(
-            1200px 500px at -20% 120%,
-            #efe7d9 0%,
-            transparent 60%
-          ),
-          radial-gradient(
-            800px 400px at 120% -10%,
-            #e8dfcd 0%,
-            transparent 60%
-          ),
-          var(--bg);
+        background: var(--bg);
         display: grid;
         place-items: center;
-        padding: 20px;
+        padding: 24px;
       }
       .card {
         width: 100%;
         max-width: 420px;
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
         overflow: hidden;
       }
       .top {
-        padding: 22px 22px 14px;
+        padding: 24px 24px 16px;
         border-bottom: 1px solid var(--line);
       }
       .brand {
         font-family: var(--mono);
         font-size: 12px;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
+        color: var(--muted);
       }
       .brand em {
         color: var(--accent);
         font-style: normal;
       }
       h1 {
-        margin: 10px 0 6px;
-        font-size: 32px;
-        line-height: 1;
-        letter-spacing: -0.03em;
+        margin: 12px 0 8px;
+        font-size: 30px;
+        line-height: 1.08;
+        letter-spacing: -0.025em;
       }
       .sub {
         margin: 0;
-        font-size: 13px;
+        font-size: 14px;
         color: var(--muted);
       }
       .login-wrap {
-        padding: 18px 22px 22px;
+        padding: 20px 24px 24px;
         display: grid;
-        gap: 14px;
+        gap: 12px;
       }
       .oauth-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 10px;
         border: 1px solid var(--line);
-        background: #fff;
+        background: var(--card);
         color: var(--ink);
         text-decoration: none;
-        border-radius: 12px;
-        padding: 11px 14px;
+        border-radius: 10px;
+        padding: 12px 14px;
         font-family: var(--mono);
         font-size: 12px;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.03em;
         text-transform: uppercase;
         font-weight: 500;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
       }
       .oauth-btn:hover {
-        background: #f6f2e9;
+        border-color: var(--accent);
+        background: #f8fafc;
       }
       .err {
         min-height: 18px;
         margin: 0;
         font-family: var(--mono);
         font-size: 11px;
-        color: #c0392b;
+        color: #b91c1c;
       }
       .help {
         font-family: var(--mono);
         font-size: 11px;
         color: var(--muted);
+        line-height: 1.6;
       }
       a {
-        color: var(--ink);
+        color: var(--accent);
         font-family: var(--mono);
         font-size: 12px;
       }
