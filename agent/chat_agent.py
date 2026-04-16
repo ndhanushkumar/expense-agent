@@ -1,18 +1,16 @@
 
-import json
 import os
-import re
 import sys
 
-from functools import partial
 from pathlib import Path
 from typing import Any, Optional
 from dotenv import load_dotenv
 from langchain.agents import create_agent
-from langchain.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
+from langchain.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -24,6 +22,38 @@ load_dotenv()
 _BLOCKED_KEYWORDS = {"drop", "delete", "update", "insert", "alter", "attach", "detach", "pragma", "vacuum"}
 _STRIP_COLS = {"id", "user_id", "email_id"}
 
+
+class StatItem(BaseModel):
+    label: str = Field(min_length=1)
+    value: str = Field(min_length=1)
+
+
+class RowItem(BaseModel):
+    # Common transaction columns. Extra fields are allowed for aggregate/grouped rows.
+    amount: Optional[float] = None
+    type: Optional[str] = None
+    merchant: Optional[str] = None
+    upi_ref: Optional[str] = None
+    payment_mode: Optional[str] = None
+    date: Optional[str] = None
+    account: Optional[str] = None
+    category: Optional[str] = None
+
+    model_config = ConfigDict(extra="allow")
+
+    @model_validator(mode="after")
+    def _validate_not_empty(self) -> "RowItem":
+        if not self.model_dump(exclude_none=True):
+            raise ValueError("Each row must include at least one field")
+        return self
+
+
+class DashboardPayload(BaseModel):
+    """Structured payload expected by the dashboard chat UI."""
+    summary: str = ""
+    stats: list[StatItem] = Field(default_factory=list)
+    rows: list[RowItem] = Field(default_factory=list)
+    sql: Optional[str] = None
 
 
 @tool
@@ -44,12 +74,10 @@ def run_query(sql: str, user_id: int) -> list[dict[str, Any]]:
     with get_connection() as conn:
         rows = conn.execute(safe_sql).fetchall()
         return [{k: v for k, v in dict(row).items() if k not in _STRIP_COLS} for row in rows]
-
-
-ollama_llm = ChatOllama(
-    model="gpt-oss:120b",
-    host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
-    api_key=os.getenv("OLLAMA_API_KEY")
+llm = ChatGoogleGenerativeAI(
+    model="gemini-3.1-flash-lite-preview",
+    temperature=0,
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
 _SYSTEM_PROMPT = (
@@ -62,63 +90,57 @@ _SYSTEM_PROMPT = (
     "Use case-insensitive queries with LOWER() or UPPER() for merchants and categories. "
     "After calling run_query, return ONLY valid JSON: "
     '{"summary": "...", "stats": [{"label": "...", "value": "..."}], "rows": [...]}. '
+    "Map rows exactly from run_query output. Do not alter keys, drop rows, or emit empty row objects. "
+    "For transaction lists, rows should include fields such as amount, type, merchant, upi_ref, payment_mode, date, account, category. "
+    "If run_query returns N rows, rows must contain exactly N row objects. "
+    "Do not emit empty stats objects. Every stats item must include non-empty label and value. "
     "No markdown, no explanations. Just the JSON object. "
     "Valid categories: food, entertainment, utilities, shopping, other, persons, transport. "
 )
 
 
-def _extract_json_from_text(text: str) -> dict[str, Any] | None:
-    body = (text or "").strip()
-    if not body:
-        return None
-
-    try:
-        parsed = json.loads(body)
-        return parsed if isinstance(parsed, dict) else None
-    except Exception:
-        pass
-
-    fence_match = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", body)
-    if fence_match:
-        try:
-            parsed = json.loads(fence_match.group(1))
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            return None
-    return None
-
-
 def _coerce_dashboard_payload(payload: Any) -> dict[str, Any]:
+    if isinstance(payload, BaseModel):
+        payload = payload.model_dump(exclude_none=True)
+
     if not isinstance(payload, dict):
-        text = str(payload).strip()
-        return {"summary": text or "Done.", "stats": [], "rows": []}
+        raise ValueError("Structured payload must be a dict")
 
-    summary_raw = payload.get("summary", "")
-    summary = str(summary_raw).strip() if summary_raw is not None else ""
+    summary = str(payload.get("summary", "")).strip()
 
-    rows_raw = payload.get("rows", [])
-    rows = rows_raw if isinstance(rows_raw, list) else []
+    rows_raw = payload.get("rows")
+    if not isinstance(rows_raw, list):
+        raise ValueError("rows must be a list")
+
     normalized_rows: list[dict[str, Any]] = []
-    _strip_cols = {"id", "user_id", "email_id"}
-    for row in rows:
-        if isinstance(row, dict):
-            normalized_rows.append({k: v for k, v in row.items() if k not in _strip_cols})
+    for row in rows_raw:
+        if isinstance(row, BaseModel):
+            row = row.model_dump(exclude_none=True)
+        if not isinstance(row, dict) or not row:
+            raise ValueError("rows must contain non-empty objects")
+        cleaned = {k: v for k, v in row.items() if k not in _STRIP_COLS}
+        if not cleaned:
+            raise ValueError("rows cannot contain only stripped columns")
+        normalized_rows.append(cleaned)
 
-    stats_raw = payload.get("stats", [])
+    stats_raw = payload.get("stats")
+    if not isinstance(stats_raw, list):
+        raise ValueError("stats must be a list")
+
     normalized_stats: list[dict[str, str]] = []
-    if isinstance(stats_raw, dict):
-        for key, value in stats_raw.items():
-            normalized_stats.append({"label": str(key), "value": str(value)})
-    elif isinstance(stats_raw, list):
-        for item in stats_raw:
-            if isinstance(item, dict):
-                label = str(item.get("label", "")).strip()
-                value = str(item.get("value", "")).strip()
-                if label or value:
-                    normalized_stats.append({"label": label, "value": value})
+    for item in stats_raw:
+        if isinstance(item, BaseModel):
+            item = item.model_dump(exclude_none=True)
+        if not isinstance(item, dict):
+            raise ValueError("stats must contain objects")
+        label = str(item.get("label", "")).strip()
+        value = str(item.get("value", "")).strip()
+        if not label or not value:
+            raise ValueError("stats items require non-empty label and value")
+        normalized_stats.append({"label": label, "value": value})
 
     result: dict[str, Any] = {
-        "summary": summary or ("Done." if not normalized_rows else ""),
+        "summary": summary,
         "stats": normalized_stats,
         "rows": normalized_rows,
     }
@@ -127,10 +149,11 @@ def _coerce_dashboard_payload(payload: Any) -> dict[str, Any]:
     return result
 
 agent = create_agent(
-        model=ollama_llm,
+        model=llm,
         tools=[run_query],
         system_prompt=_SYSTEM_PROMPT,
         checkpointer=InMemorySaver(),
+        response_format=DashboardPayload
     )
 
 def invoke(input: str, user_id: int, email: str, thread_id: Optional[str] = None) -> dict[str, Any]:
@@ -139,21 +162,12 @@ def invoke(input: str, user_id: int, email: str, thread_id: Optional[str] = None
             HumanMessage(content=f"Question: {input}")
         ]
 },{"configurable": {"thread_id": thread_id}})
-    if isinstance(response, dict):
-        messages = response.get("messages") or []
-        if messages:
-            content = messages[-1].content
-            if isinstance(content, str):
-                parsed = _extract_json_from_text(content)
-                if parsed:
-                    return _coerce_dashboard_payload(parsed)
-                return _coerce_dashboard_payload({"summary": content, "rows": [], "stats": []})
-            if isinstance(content, list):
-                text_parts = [part.get("text", "") for part in content if isinstance(part, dict)]
-                merged = "\n".join(p for p in text_parts if p).strip()
-                parsed = _extract_json_from_text(merged)
-                if parsed:
-                    return _coerce_dashboard_payload(parsed)
-                return _coerce_dashboard_payload({"summary": merged, "rows": [], "stats": []})
 
-    return _coerce_dashboard_payload(response)
+    if not isinstance(response, dict):
+        raise ValueError("Agent returned unexpected response type")
+
+    structured = response.get("structured_response")
+    if structured is None:
+        raise ValueError("Agent did not return structured_response")
+
+    return _coerce_dashboard_payload(structured)

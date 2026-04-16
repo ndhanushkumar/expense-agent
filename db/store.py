@@ -72,6 +72,20 @@ def initialize_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS budgets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                category TEXT NOT NULL,
+                monthly_limit REAL NOT NULL CHECK (monthly_limit > 0),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(user_id, category)
+            )
+            """
+        )
 
         cols = conn.execute("PRAGMA table_info(transactions)").fetchall()
         col_names = {row[1] for row in cols}
@@ -115,6 +129,12 @@ def initialize_db() -> None:
             """
             CREATE INDEX IF NOT EXISTS idx_transactions_user_id_id
             ON transactions(user_id, id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_budgets_user_id
+            ON budgets(user_id)
             """
         )
         conn.commit()

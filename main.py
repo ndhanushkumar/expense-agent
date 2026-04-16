@@ -569,6 +569,11 @@ class NLQueryRequest(BaseModel):
     thread_id: Optional[str] = None
 
 
+class BudgetUpsert(BaseModel):
+    category: str
+    monthly_limit: float
+
+
 def normalize_payment_mode(value: str | None, upi_ref: str | None = None) -> str:
     raw = (value or "").strip().lower()
     if raw in {"upi", "credit_card", "debit_card"}:
@@ -578,6 +583,10 @@ def normalize_payment_mode(value: str | None, upi_ref: str | None = None) -> str
     if not raw:
         return "debit_card"
     raise HTTPException(status_code=400, detail="payment_mode must be upi, credit_card, or debit_card")
+
+
+def normalize_category(value: str | None) -> str:
+    return (value or "").strip().lower() or "other"
 
 
 @app.post("/transactions")
@@ -598,7 +607,7 @@ def create_transaction(
     merchant = (body.merchant or "").strip() or None
     upi_ref = (body.upi_ref or "").strip() or None
     account = (body.account or "").strip() or None
-    category = (body.category or "").strip().lower() or "other"
+    category = normalize_category(body.category)
     payment_mode = normalize_payment_mode(body.payment_mode, upi_ref)
     date = (body.date or "").strip()
     if not date:
@@ -680,6 +689,8 @@ def update_transaction(
         raise HTTPException(status_code=400, detail="No fields to update")
     if "payment_mode" in fields:
         fields["payment_mode"] = normalize_payment_mode(fields["payment_mode"])
+    if "category" in fields:
+        fields["category"] = normalize_category(fields["category"])
 
     with get_connection() as conn:
         # verify ownership
@@ -720,6 +731,55 @@ def delete_transaction(
         conn.commit()
 
     return {"ok": True}
+
+
+@app.get("/budgets")
+def list_budgets(current_user: dict[str, Any] = Depends(require_auth)):
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT category, monthly_limit, updated_at
+            FROM budgets
+            WHERE user_id = ?
+            ORDER BY category ASC
+            """,
+            (current_user["id"],),
+        ).fetchall()
+    return {"count": len(rows), "items": [dict(row) for row in rows]}
+
+
+@app.put("/budgets")
+def upsert_budget(
+    body: BudgetUpsert,
+    current_user: dict[str, Any] = Depends(require_auth),
+):
+    monthly_limit = float(body.monthly_limit)
+    if monthly_limit <= 0:
+        raise HTTPException(status_code=400, detail="monthly_limit must be greater than 0")
+
+    category = normalize_category(body.category)
+    now = now_utc_iso()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO budgets (user_id, category, monthly_limit, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, category) DO UPDATE SET
+              monthly_limit = excluded.monthly_limit,
+              updated_at = excluded.updated_at
+            """,
+            (current_user["id"], category, monthly_limit, now, now),
+        )
+        row = conn.execute(
+            """
+            SELECT category, monthly_limit, updated_at
+            FROM budgets
+            WHERE user_id = ? AND category = ?
+            """,
+            (current_user["id"], category),
+        ).fetchone()
+        conn.commit()
+    return dict(row)
 
 
 # ── static + dashboard ─────────────────────────────────────────────────────

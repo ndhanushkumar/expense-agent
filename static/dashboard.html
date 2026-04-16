@@ -513,6 +513,96 @@
         font-size: 11px;
         color: var(--muted);
       }
+      .legend-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+      .budget-mini {
+        margin-left: 18px;
+      }
+      .budget-mini-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .budget-mini-label {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .budget-mini-track {
+        height: 4px;
+        background: var(--surface2);
+        border-radius: 100px;
+        overflow: hidden;
+        margin-top: 5px;
+      }
+      .budget-mini-fill {
+        height: 100%;
+        border-radius: 100px;
+        background: #1a7a40;
+        transition: width 0.5s ease;
+      }
+      .budget-mini-fill.warn {
+        background: #b45309;
+      }
+      .budget-mini-fill.over {
+        background: #c0392b;
+      }
+      /* toast */
+      .toast-container {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 300;
+        pointer-events: none;
+        align-items: center;
+      }
+      .toast {
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 9px 16px;
+        border-radius: 100px;
+        background: #1e293b;
+        color: #fff;
+        white-space: nowrap;
+        opacity: 0;
+        animation: toast-in 0.2s ease forwards, toast-out 0.3s ease 3.5s forwards;
+        pointer-events: none;
+      }
+      .toast.warn {
+        background: #92400e;
+      }
+      @keyframes toast-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes toast-out {
+        from { opacity: 1; }
+        to   { opacity: 0; }
+      }
+      .budget-input {
+        width: 90px;
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 3px 6px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface2);
+        color: var(--text);
+      }
+      .budget-input:focus {
+        outline: none;
+        border-color: var(--yellow);
+        background: var(--surface);
+      }
 
       /* table card */
       .table-card {
@@ -1818,6 +1908,7 @@
       </div>
     </header>
 
+    <div class="toast-container" id="toast-container"></div>
     <div class="content">
       <div class="global-filter-bar">
         <div class="global-filter-copy">
@@ -2228,6 +2319,7 @@
               <option value="utilities">utilities</option>
               <option value="shopping">shopping</option>
               <option value="persons">persons</option>
+              <option value="transport">transport</option>
               <option value="other" selected>other</option>
             </select>
           </div>
@@ -2275,6 +2367,7 @@
         payFlt = "upi_debit",
         q = "",
         pg = 0;
+      let budgetsByCategory = {};
       let catChartInst = null,
         dayChartInst = null;
       let editingId = null,
@@ -2308,6 +2401,20 @@
         "#65a30d",
         "#ea580c",
       ];
+      function categoryKey(v) {
+        return String(v || "")
+          .trim()
+          .toLowerCase();
+      }
+      function categoryLabel(v) {
+        const key = categoryKey(v).replace(/[_-]+/g, " ");
+        if (!key) return "Other";
+        return key
+          .split(" ")
+          .filter(Boolean)
+          .map((part) => part[0].toUpperCase() + part.slice(1))
+          .join(" ");
+      }
 
       function parseDate(d) {
         if (!d) return null;
@@ -2534,6 +2641,41 @@
         all = (await r.json()).items || [];
         render();
       }
+      async function loadBudgets() {
+        const r = await fetch(`${API}/budgets`);
+        if (r.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!r.ok) throw new Error(r.statusText);
+        const payload = await r.json();
+        budgetsByCategory = {};
+        (payload.items || []).forEach((item) => {
+          budgetsByCategory[categoryKey(item.category)] = Number(
+            item.monthly_limit,
+          );
+        });
+        _alertedCategories = new Set();
+      }
+      async function saveBudget(category, monthlyLimit) {
+        const res = await fetch(`${API}/budgets`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category,
+            monthly_limit: monthlyLimit,
+          }),
+        });
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return false;
+        }
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || "Unable to save budget");
+        }
+        return true;
+      }
 
       async function syncManualJobStatus() {
         const res = await fetch("/job/run-now/status");
@@ -2635,6 +2777,7 @@
           ) {
             startManualJobPolling();
           }
+          await loadBudgets();
           await loadTransactions();
           document.getElementById("live-txt").textContent = "live";
         } catch (e) {
@@ -2642,6 +2785,42 @@
           document.getElementById("tbl").innerHTML =
             `<tr><td colspan="8" class="empty">Cannot reach API — ${e.message}</td></tr>`;
         }
+      }
+
+      let _alertedCategories = new Set();
+
+      function showToast(msg, type) {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+        const el = document.createElement("div");
+        el.className = "toast" + (type === "warn" ? " warn" : "");
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+      }
+
+      function checkBudgetAlerts(items) {
+        const spendByCategory = {};
+        items
+          .filter((t) => t.type === "debited")
+          .forEach((t) => {
+            const key = categoryKey(t.category) || "other";
+            spendByCategory[key] = (spendByCategory[key] || 0) + t.amount;
+          });
+
+        Object.entries(budgetsByCategory).forEach(([cat, limit]) => {
+          if (!limit || limit <= 0) return;
+          const spent = spendByCategory[cat] || 0;
+          const pct = (spent / limit) * 100;
+          const alertKey = `${cat}:${Math.floor(pct / 10)}`; // re-alert each 10% tier
+          if (pct >= 100 && !_alertedCategories.has(`${cat}:over`)) {
+            _alertedCategories.add(`${cat}:over`);
+            showToast(`⚠ ${categoryLabel(cat)} budget exceeded (${fmt(spent)} / ${fmt(limit)})`);
+          } else if (pct >= 80 && pct < 100 && !_alertedCategories.has(`${cat}:80`)) {
+            _alertedCategories.add(`${cat}:80`);
+            showToast(`${categoryLabel(cat)} at ${Math.round(pct)}% of budget (${fmt(spent)} / ${fmt(limit)})`, "warn");
+          }
+        });
       }
 
       function render() {
@@ -2652,6 +2831,7 @@
         renderDayChart(scoped);
         updateModeTitles();
         applyFilter();
+        checkBudgetAlerts(scoped);
         document.getElementById("s-date").textContent =
           `${getDateScopeLabel()} · ${activeModeLabel()}`;
       }
@@ -2702,21 +2882,38 @@
       }
 
       function renderCategoryChart(items) {
-        const map = {};
+        const spendByCategory = {};
+        const allCategories = {};
         items
           .filter((t) => t.type === "debited")
           .forEach((t) => {
-            const cat =
+            const rawCategory =
               t.category && t.category !== "-" && t.category !== "null"
                 ? t.category
                 : "Other";
-            map[cat] = (map[cat] || 0) + t.amount;
+            const key = categoryKey(rawCategory) || "other";
+            spendByCategory[key] = (spendByCategory[key] || 0) + t.amount;
+            allCategories[key] = categoryLabel(rawCategory);
           });
-        const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
-        const labels = sorted.map(([k]) => k),
-          values = sorted.map(([, v]) => v);
+        Object.keys(budgetsByCategory).forEach((key) => {
+          if (!allCategories[key]) {
+            allCategories[key] = categoryLabel(key);
+          }
+        });
+        const sortedKeys = Object.keys(allCategories).sort((a, b) => {
+          const diff = (spendByCategory[b] || 0) - (spendByCategory[a] || 0);
+          if (diff !== 0) return diff;
+          return allCategories[a].localeCompare(allCategories[b]);
+        });
+        const donutKeys = sortedKeys.filter((key) => (spendByCategory[key] || 0) > 0);
+        const labels = donutKeys.map((key) => allCategories[key]);
+        const values = donutKeys.map((key) => spendByCategory[key]);
         const total = values.reduce((s, v) => s + v, 0);
-        const colors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
+        const colors = donutKeys.map((_, i) => PALETTE[i % PALETTE.length]);
+        const colorsByKey = {};
+        donutKeys.forEach((key, i) => {
+          colorsByKey[key] = colors[i];
+        });
         const ctx = document.getElementById("cat-chart").getContext("2d");
         if (catChartInst) catChartInst.destroy();
         catChartInst = new Chart(ctx, {
@@ -2749,18 +2946,67 @@
           },
         });
         const leg = document.getElementById("cat-legend");
-        leg.innerHTML = sorted.length
-          ? sorted
+        leg.innerHTML = sortedKeys.length
+          ? sortedKeys
               .map(
-                ([name, amt], i) => `
+                (key) => {
+                  const spent = spendByCategory[key] || 0;
+                  const limit = budgetsByCategory[key];
+                  const progressPct =
+                    limit && limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+                  const isOverBudget = limit && spent > limit;
+                  const budgetMeta = limit
+                    ? `${fmt(spent)} / ${fmt(limit)}`
+                    : "No budget set";
+                  return `
           <div class="legend-row">
-            <div class="legend-dot" style="background:${colors[i]}"></div>
-            <div class="legend-name">${name}</div>
-            <div class="legend-pct">${((amt / total) * 100).toFixed(1)}%</div>
-          </div>`,
+            <div class="legend-main">
+              <div class="legend-dot" style="background:${colorsByKey[key] || "#cbd5e1"}"></div>
+              <div class="legend-name">${allCategories[key]}</div>
+              <div class="legend-pct">${total ? ((spent / total) * 100).toFixed(1) : "0.0"}%</div>
+            </div>
+            <div class="budget-mini">
+              <div class="budget-mini-meta">
+                <div class="budget-mini-label">${budgetMeta}</div>
+                <input class="budget-input" type="number" min="0.01" step="0.01" data-category="${encodeURIComponent(key)}" value="${limit || ""}" placeholder="Set budget" />
+              </div>
+              <div class="budget-mini-track">
+                <div class="budget-mini-fill ${isOverBudget ? "over" : ""}" style="width:${progressPct.toFixed(1)}%"></div>
+              </div>
+            </div>
+          </div>`;
+                },
               )
               .join("")
           : "";
+        leg.querySelectorAll(".budget-input").forEach((input) => {
+          input.addEventListener("change", async (e) => {
+            const target = e.currentTarget;
+            const category = categoryKey(
+              decodeURIComponent(target.dataset.category || ""),
+            );
+            const raw = Number(target.value);
+            if (!Number.isFinite(raw) || raw <= 0) {
+              alert("Budget must be greater than 0");
+              target.value = budgetsByCategory[category] || "";
+              return;
+            }
+            try {
+              target.disabled = true;
+              await saveBudget(category, raw);
+              budgetsByCategory[category] = raw;
+              _alertedCategories = new Set();
+              renderCategoryChart(
+                getGlobalScopedTransactions(getModeScopedTransactions()),
+              );
+            } catch (error) {
+              alert("Failed to save budget: " + error.message);
+              target.value = budgetsByCategory[category] || "";
+            } finally {
+              target.disabled = false;
+            }
+          });
+        });
       }
 
       function renderDayChart(items) {
