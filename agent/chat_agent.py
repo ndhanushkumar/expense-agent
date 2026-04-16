@@ -160,7 +160,7 @@ agent = create_agent(
 def invoke(input: str, user_id: int, email: str, thread_id: Optional[str] = None) -> dict[str, Any]:
     response = agent.invoke({
         "messages": [
-            HumanMessage(content=f"Question: {input}")
+            HumanMessage(content=f"Question: {input} , user_id: {user_id}, email: {email}")
         ]
 },{"configurable": {"thread_id": thread_id}})
 
