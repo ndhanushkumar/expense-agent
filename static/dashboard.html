@@ -281,6 +281,40 @@
         margin: 0 auto;
         width: 100%;
       }
+      .global-filter-bar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 16px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .global-filter-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .global-filter-title {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text);
+      }
+      .global-filter-sub {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .global-filter-bar .filter-tabs {
+        margin-left: auto;
+      }
+      .global-filter-bar .date-controls {
+        justify-content: flex-end;
+      }
 
       /* stats */
       .stats-row {
@@ -1615,6 +1649,50 @@
         .toolbar-row {
           align-items: stretch;
         }
+        .global-filter-bar {
+          align-items: stretch;
+        }
+        .global-filter-copy {
+          width: 100%;
+        }
+        .global-filter-bar .filter-tabs {
+          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 4px;
+          margin-left: 0;
+        }
+        .global-filter-bar .filter-tabs .tab {
+          min-width: 0;
+          text-align: center;
+          padding: 8px 6px;
+          font-size: 10px;
+          letter-spacing: 0.04em;
+        }
+        .global-filter-bar .date-controls {
+          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .global-filter-bar .date-controls .date-input,
+        .global-filter-bar .date-controls .date-clear {
+          width: 100%;
+        }
+        .global-filter-bar .date-controls .date-sep {
+          display: none;
+        }
+        .global-filter-bar .date-controls .date-clear {
+          grid-column: 1 / -1;
+        }
+        .table-toolbar .filter-tabs {
+          width: 100%;
+        }
+        .table-toolbar .filter-tabs .tab {
+          flex: 1;
+          text-align: center;
+          min-width: 0;
+        }
         .toolbar-actions {
           width: 100%;
           flex-direction: column;
@@ -1659,7 +1737,16 @@
           width: 100%;
         }
       }
-      @media (max-width: 400px) {
+      @media (max-width: 360px) {
+        .global-filter-bar .filter-tabs {
+          grid-template-columns: 1fr;
+        }
+        .global-filter-bar .date-controls {
+          grid-template-columns: 1fr;
+        }
+        .global-filter-bar .date-controls .date-clear {
+          grid-column: auto;
+        }
         .manual-job-btn {
           padding: 5px 8px;
           font-size: 10px;
@@ -1732,6 +1819,57 @@
     </header>
 
     <div class="content">
+      <div class="global-filter-bar">
+        <div class="global-filter-copy">
+          <div class="global-filter-title">Global Filters</div>
+          <div class="global-filter-sub">
+            Affects stats, charts, and transactions table.
+          </div>
+        </div>
+        <div class="filter-tabs">
+          <button class="tab mode-tab" onclick="setPaymentFilter('all', this)">
+            All modes
+          </button>
+          <button
+            class="tab mode-tab active"
+            onclick="setPaymentFilter('upi_debit', this)"
+          >
+            UPI + Debit
+          </button>
+          <button
+            class="tab mode-tab"
+            onclick="setPaymentFilter('credit_card', this)"
+          >
+            Credit card
+          </button>
+        </div>
+        <div class="date-controls">
+          <input
+            class="date-input"
+            type="month"
+            id="month-filter"
+            onchange="applyGlobalFilter()"
+            title="Month"
+          />
+          <input
+            class="date-input"
+            type="date"
+            id="date-from"
+            onchange="applyGlobalFilter()"
+            title="From date"
+          />
+          <span class="date-sep">→</span>
+          <input
+            class="date-input"
+            type="date"
+            id="date-to"
+            onchange="applyGlobalFilter()"
+            title="To date"
+          />
+          <button class="date-clear" onclick="clearDates()">✕ clear</button>
+        </div>
+      </div>
+
       <div class="stats-row">
         <div class="stat">
           <div class="stat-label">Transactions</div>
@@ -1918,54 +2056,6 @@
               <button class="add-btn" type="button" onclick="openAddModal()">
                 + Add transaction
               </button>
-            </div>
-          </div>
-          <div class="toolbar-row">
-            <div class="filter-tabs">
-              <button
-                class="tab mode-tab"
-                onclick="setPaymentFilter('all', this)"
-              >
-                All modes
-              </button>
-              <button
-                class="tab mode-tab active"
-                onclick="setPaymentFilter('upi_debit', this)"
-              >
-                UPI + Debit
-              </button>
-              <button
-                class="tab mode-tab"
-                onclick="setPaymentFilter('credit_card', this)"
-              >
-                Credit card
-              </button>
-            </div>
-          </div>
-          <div class="toolbar-row">
-            <div class="date-controls">
-              <input
-                class="date-input"
-                type="date"
-                id="date-from"
-                onchange="applyFilter()"
-                title="From date"
-              />
-              <span class="date-sep">→</span>
-              <input
-                class="date-input"
-                type="date"
-                id="date-to"
-                onchange="applyFilter()"
-                title="To date"
-              />
-              <button class="date-clear" onclick="clearDates()">✕ clear</button>
-            </div>
-            <div class="group-toggle" onclick="toggleGroup()">
-              <div class="toggle-track on" id="grp-track">
-                <div class="toggle-knob"></div>
-              </div>
-              <span>Group by date</span>
             </div>
           </div>
         </div>
@@ -2184,8 +2274,7 @@
         flt = "all",
         payFlt = "upi_debit",
         q = "",
-        pg = 0,
-        groupByDate = true;
+        pg = 0;
       let catChartInst = null,
         dayChartInst = null;
       let editingId = null,
@@ -2237,6 +2326,73 @@
       }
       function inputDate(v) {
         return v ? new Date(v) : null;
+      }
+      function currentMonthValue() {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      }
+      function monthRange(v) {
+        if (!v) return { start: null, end: null };
+        const [y, m] = v.split("-").map(Number);
+        if (!y || !m) return { start: null, end: null };
+        const start = new Date(y, m - 1, 1);
+        const end = new Date(y, m, 0, 23, 59, 59, 999);
+        return { start, end };
+      }
+      function toInputDisplay(v) {
+        if (!v) return "";
+        const d = new Date(v);
+        if (Number.isNaN(d.getTime())) return "";
+        return d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+      function getDateScopeLabel() {
+        const monthValue = document.getElementById("month-filter")?.value || "";
+        const fromValue = document.getElementById("date-from")?.value || "";
+        const toValue = document.getElementById("date-to")?.value || "";
+
+        if (monthValue) {
+          const monthDate = new Date(`${monthValue}-01`);
+          if (!Number.isNaN(monthDate.getTime())) {
+            return monthDate.toLocaleDateString("en-IN", {
+              month: "long",
+              year: "numeric",
+            });
+          }
+        }
+        if (fromValue && toValue) {
+          return `${toInputDisplay(fromValue)} → ${toInputDisplay(toValue)}`;
+        }
+        if (fromValue) {
+          return `from ${toInputDisplay(fromValue)}`;
+        }
+        if (toValue) {
+          return `until ${toInputDisplay(toValue)}`;
+        }
+        return "all dates";
+      }
+      function getGlobalScopedTransactions(items) {
+        const from = inputDate(document.getElementById("date-from").value);
+        const to = inputDate(document.getElementById("date-to").value);
+        if (to) to.setHours(23, 59, 59, 999);
+
+        const monthValue = document.getElementById("month-filter").value;
+        const month = monthRange(monthValue);
+
+        return items.filter((t) => {
+          const ts = parseDate(t.date);
+          const mf = !from || (ts && ts >= from);
+          const me = !to || (ts && ts <= to);
+          const mm =
+            !month.start || (ts && ts >= month.start && ts <= month.end);
+          return mf && me && mm;
+        });
+      }
+      function applyGlobalFilter() {
+        render();
       }
       function normalizedMode(t) {
         const mode = (t.payment_mode || "").toLowerCase();
@@ -2454,6 +2610,11 @@
 
       async function init() {
         try {
+          const monthInput = document.getElementById("month-filter");
+          if (monthInput && !monthInput.value) {
+            monthInput.value = currentMonthValue();
+          }
+
           const meRes = await fetch("/auth/me");
           if (meRes.status === 401) {
             window.location.href = "/login";
@@ -2484,7 +2645,7 @@
       }
 
       function render() {
-        const scoped = getModeScopedTransactions();
+        const scoped = getGlobalScopedTransactions(getModeScopedTransactions());
         renderStats(scoped);
         renderMerchantBars(scoped);
         renderCategoryChart(scoped);
@@ -2492,12 +2653,7 @@
         updateModeTitles();
         applyFilter();
         document.getElementById("s-date").textContent =
-          new Date().toLocaleDateString("en-IN", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }) + ` · ${activeModeLabel()}`;
+          `${getDateScopeLabel()} · ${activeModeLabel()}`;
       }
 
       function renderStats(items) {
@@ -2670,47 +2826,29 @@
       }
 
       function applyFilter() {
-        const from = inputDate(document.getElementById("date-from").value);
-        const to = inputDate(document.getElementById("date-to").value);
-        if (to) to.setHours(23, 59, 59, 999);
-        fil = all.filter((t) => {
-          const mt = flt === "all" || t.type === flt;
-          const mode = normalizedMode(t);
-          const mm =
-            payFlt === "all" ||
-            (payFlt === "credit_card" && mode === "credit_card") ||
-            (payFlt === "upi_debit" &&
-              (mode === "upi" || mode === "debit_card"));
-          const ms =
-            !q ||
-            (t.merchant || "").toLowerCase().includes(q) ||
-            (t.upi_ref || "").toLowerCase().includes(q);
-          const ts = parseDate(t.date);
-          const mf = !from || (ts && ts >= from);
-          const me = !to || (ts && ts <= to);
-          return mt && mm && ms && mf && me;
-        });
+        fil = getGlobalScopedTransactions(getModeScopedTransactions()).filter(
+          (t) => {
+            const mt = flt === "all" || t.type === flt;
+            const ms =
+              !q ||
+              (t.merchant || "").toLowerCase().includes(q) ||
+              (t.upi_ref || "").toLowerCase().includes(q);
+            return mt && ms;
+          },
+        );
         pg = 0;
         renderTable();
       }
 
       function clearDates() {
+        document.getElementById("month-filter").value = currentMonthValue();
         document.getElementById("date-from").value = "";
         document.getElementById("date-to").value = "";
-        applyFilter();
-      }
-
-      function toggleGroup() {
-        groupByDate = !groupByDate;
-        document
-          .getElementById("grp-track")
-          .classList.toggle("on", groupByDate);
-        pg = 0;
-        renderTable();
+        render();
       }
 
       function renderTable() {
-        groupByDate ? renderGrouped() : renderFlat();
+        renderGrouped();
       }
 
       function renderFlat() {
@@ -3004,6 +3142,7 @@
       let chatOpen = false;
       let chatHistory = [];
       let chatBusy = false;
+      let currentThreadId = null;
 
       function toggleChat(nextState) {
         chatOpen = typeof nextState === "boolean" ? nextState : !chatOpen;
@@ -3031,6 +3170,7 @@
       function chatNewConversation() {
         if (chatBusy) return;
         chatHistory = [];
+        currentThreadId = null;
         const input = document.getElementById("chat-input");
         input.value = "";
         input.style.height = "36px";
@@ -3132,6 +3272,11 @@
 
       async function chatSend() {
         if (chatBusy) return;
+        if (!currentThreadId) {
+          // start new thread
+          currentThreadId =
+            Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
         const input = document.getElementById("chat-input");
         const q = input.value.trim();
         if (!q) return;
@@ -3151,11 +3296,13 @@
         chatRenderMessages();
 
         try {
+          console.log("Querying: ", q, "Thread ID:", currentThreadId);
           const res = await fetch("/transactions/query", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ q }),
+            body: JSON.stringify({ q, thread_id: currentThreadId }),
           });
+
           const data = await res.json();
           // replace thinking with result
           chatHistory.pop();

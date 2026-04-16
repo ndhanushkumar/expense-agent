@@ -566,6 +566,7 @@ class TransactionCreate(BaseModel):
 
 class NLQueryRequest(BaseModel):
     q: str
+    thread_id: Optional[str] = None
 
 
 def normalize_payment_mode(value: str | None, upi_ref: str | None = None) -> str:
@@ -646,7 +647,7 @@ def nl_query(body: NLQueryRequest, current_user: dict[str, Any] = Depends(requir
         raise HTTPException(status_code=400, detail="query parameter 'q' is required")
 
     try:
-        result = chat_agent.invoke(q, current_user["id"],current_user["email"])
+        result = chat_agent.invoke(q, current_user["id"],current_user["email"], thread_id=body.thread_id)
         if isinstance(result, dict):
             summary = str(result.get("summary") or "").strip()
             rows = result.get("rows") if isinstance(result.get("rows"), list) else []

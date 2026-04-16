@@ -6,12 +6,13 @@ import sys
 
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
+from langgraph.checkpoint.memory import InMemorySaver
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -58,10 +59,11 @@ _SYSTEM_PROMPT = (
     "date is stored as DD-MM-YY string (e.g. 05-04-26). "
     "type is either 'debited' or 'credited'. "
     "Refer to the user as 'you', never mention user_id or internal IDs. "
-    "After calling run_query, return ONLY a JSON object: "
+    "Use case-insensitive queries with LOWER() or UPPER() for merchants and categories. "
+    "After calling run_query, return ONLY valid JSON: "
     '{"summary": "...", "stats": [{"label": "...", "value": "..."}], "rows": [...]}. '
-    "No markdown, no code fences. Just the JSON."
-    "category is one of ['food', 'entertainment', 'utilities', 'shopping', 'other','persons','transport'] based on merchant. "
+    "No markdown, no explanations. Just the JSON object. "
+    "Valid categories: food, entertainment, utilities, shopping, other, persons, transport. "
 )
 
 
@@ -124,19 +126,19 @@ def _coerce_dashboard_payload(payload: Any) -> dict[str, Any]:
         result["sql"] = str(payload["sql"])
     return result
 
-
-def invoke(input: str, user_id: int, email: str) -> dict[str, Any]:
-    agent = create_agent(
+agent = create_agent(
         model=ollama_llm,
         tools=[run_query],
         system_prompt=_SYSTEM_PROMPT,
+        checkpointer=InMemorySaver(),
     )
+
+def invoke(input: str, user_id: int, email: str, thread_id: Optional[str] = None) -> dict[str, Any]:
     response = agent.invoke({
         "messages": [
             HumanMessage(content=f"Question: {input}")
         ]
-    })
-
+},{"configurable": {"thread_id": thread_id}})
     if isinstance(response, dict):
         messages = response.get("messages") or []
         if messages:
