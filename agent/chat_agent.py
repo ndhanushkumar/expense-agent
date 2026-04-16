@@ -70,6 +70,11 @@ def run_query(sql: str, user_id: int) -> list[dict[str, Any]]:
 
     # strip multiple statements
     safe_sql = sql.split(";")[0].strip()
+    
+    if "user_id" not in safe_sql.lower():
+        import re
+        safe_sql = re.sub(r'(?i)\btransactions\b', f'(SELECT * FROM transactions WHERE user_id = {user_id})', safe_sql)
+    
     print(f"Executing SQL for user {user_id}: {safe_sql}")
     with get_connection() as conn:
         rows = conn.execute(safe_sql).fetchall()
