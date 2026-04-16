@@ -87,6 +87,7 @@ _SYSTEM_PROMPT = (
     "date is stored as DD-MM-YY string (e.g. 05-04-26). "
     "type is either 'debited' or 'credited'. "
     "Refer to the user as 'you', never mention user_id or internal IDs. "
+    "Always run query for current user_id. Do not hardcode or assume any user_id. "
     "Use case-insensitive queries with LOWER() or UPPER() for merchants and categories. "
     "After calling run_query, return ONLY valid JSON: "
     '{"summary": "...", "stats": [{"label": "...", "value": "..."}], "rows": [...]}. '
